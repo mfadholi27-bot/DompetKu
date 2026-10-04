@@ -37,7 +37,7 @@ hr{border:0;border-top:1px solid var(--line);margin:14px 0}
 </head>
 <body>
 <div class="app">
-<header><div><h1>DompetKu</h1><div class="sub">Keuangan pribadi • offline-first</div></div><button class="ghost" onclick="openSettings()">⚙️</button></header>
+<header><div><h1>DompetKu</h1><div class="sub">Keuangan pribadi • offline-first • v2.9</div></div><button class="ghost" onclick="openSettings()">⚙️</button></header>
 
 <section id="home" class="screen active">
 <div class="card balance"><div class="muted">Saldo total</div><div class="amount" id="balance">Rp0</div><div class="stats"><div class="stat">Pemasukan<b id="income">Rp0</b></div><div class="stat">Pengeluaran<b id="expense">Rp0</b></div></div></div>
@@ -210,13 +210,15 @@ function populateTransactionFilters(){
 }
 function clearTxFilters(){['search','filterMonth'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});['filterType','filterCategory','filterWallet'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='all'});renderTransactions()}
 function renderTransactions(){
+ const txListEl=document.getElementById('txList');
+ if(!txListEl)return;
  populateTransactionFilters();
  const q=(document.getElementById('search')?.value||'').toLowerCase().trim(),type=document.getElementById('filterType')?.value||'all',cat=document.getElementById('filterCategory')?.value||'all',wallet=document.getElementById('filterWallet')?.value||'all',month=document.getElementById('filterMonth')?.value||'';
  let a=[...db.transactions].filter(x=>{
   const c=normalizeCategory(x.category),text=(c+' '+(x.note||'')).toLowerCase();
   return (!q||text.includes(q))&&(type==='all'||x.type===type)&&(cat==='all'||c.toLowerCase()===cat.toLowerCase())&&(wallet==='all'||String(x.wallet)===String(wallet))&&(!month||monthKey(x.date)===month);
  }).sort((a,b)=>String(b.date).localeCompare(String(a.date))||Number(b.id)-Number(a.id));
- txList.innerHTML=a.length?a.map(x=>`<div class="tx"><div class="row"><div><div class="tx-title">${escapeHtml(normalizeCategory(x.category))}</div><div class="tx-meta">${escapeHtml(x.date)} • ${escapeHtml(db.wallets.find(w=>w.id==x.wallet)?.name||'Dompet')}${x.note?' • '+escapeHtml(x.note):''}</div></div><div class="${x.type==='income'?'green':'red'}"><b>${x.type==='income'?'+':'−'}${rupiah(x.amount)}</b><br><button class="mini ghost" onclick='openTx("${x.type}",${JSON.stringify(x).replace(/</g,"\u003c").replace(/'/g,"&#39;")})'>Edit</button> <button class="mini dangerBtn" onclick="delTx(${x.id})">Hapus</button></div></div></div>`).join(''):'<div class="empty">Tidak ada transaksi yang sesuai filter.</div>'
+ txListEl.innerHTML=a.length?a.map(x=>`<div class="tx"><div class="row"><div><div class="tx-title">${escapeHtml(normalizeCategory(x.category))}</div><div class="tx-meta">${escapeHtml(x.date)} • ${escapeHtml(db.wallets.find(w=>w.id==x.wallet)?.name||'Dompet')}${x.note?' • '+escapeHtml(x.note):''}</div></div><div class="${x.type==='income'?'green':'red'}"><b>${x.type==='income'?'+':'−'}${rupiah(x.amount)}</b><br><button class="mini ghost" onclick='openTx("${x.type}",${JSON.stringify(x).replace(/</g,"\u003c").replace(/'/g,"&#39;")})'>Edit</button> <button class="mini dangerBtn" onclick="delTx(${x.id})">Hapus</button></div></div></div>`).join(''):'<div class="empty">Tidak ada transaksi yang sesuai filter.</div>'
 }
 function renderHome(){
   const inc=total('income'),exp=total('expense'),bud=db.settings.monthlyBudget||0,me=monthTotal('expense');
@@ -408,11 +410,22 @@ function deleteCategory(c){
   if(confirm('Hapus kategori '+c+'?')){saveCategories(getCategories().filter(x=>x!==c));renderCategoryManager()}
 }
 
-function exportCsv(){
+async function exportCsv(){
  const rows=[['Tanggal','Jenis','Kategori','Dompet','Nominal','Catatan']];
  [...db.transactions].sort((a,b)=>String(a.date).localeCompare(String(b.date))).forEach(x=>rows.push([x.date,x.type==='income'?'Pemasukan':'Pengeluaran',normalizeCategory(x.category),db.wallets.find(w=>+w.id===+x.wallet)?.name||'Dompet',x.amount,x.note||'']));
  const csv='\ufeff'+rows.map(r=>r.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(',')).join('\r\n');
- const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='DompetKu_Transaksi_'+new Date().toISOString().slice(0,10)+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)
+ const filename='DompetKu_Transaksi_'+new Date().toISOString().slice(0,10)+'.csv';
+ const file=new File([csv],filename,{type:'text/csv;charset=utf-8'});
+ try{
+   if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+     await navigator.share({files:[file],title:'DompetKu - Export CSV'});
+     return;
+   }
+ }catch(e){if(e&&e.name==='AbortError')return;}
+ const url=URL.createObjectURL(file);
+ const a=document.createElement('a');a.href=url;a.download=filename;a.style.display='none';
+ document.body.appendChild(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),1500);
 }
 function openMonthlyReport(){
  const m=monthKey(new Date());
@@ -420,10 +433,12 @@ function openMonthlyReport(){
  renderMonthlyReport(m)
 }
 function renderMonthlyReport(month){
+ const body=document.getElementById('monthlyReportBody');
+ if(!body)return;
  const inc=db.transactions.filter(x=>x.type==='income'&&monthKey(x.date)===month).reduce((s,x)=>s+Number(x.amount),0),exp=db.transactions.filter(x=>x.type==='expense'&&monthKey(x.date)===month).reduce((s,x)=>s+Number(x.amount),0);
  const cats={};db.transactions.filter(x=>x.type==='expense'&&monthKey(x.date)===month).forEach(x=>{const c=normalizeCategory(x.category);cats[c]=(cats[c]||0)+Number(x.amount)});
  const top=Object.entries(cats).sort((a,b)=>b[1]-a[1]),total=top.reduce((s,x)=>s+x[1],0);
- monthlyReportBody.innerHTML=`<div class="card"><div class="row"><span>Pemasukan</span><b class="green">${rupiah(inc)}</b></div><div class="row" style="margin-top:8px"><span>Pengeluaran</span><b class="red">${rupiah(exp)}</b></div><div class="row" style="margin-top:8px"><span>Sisa</span><b>${rupiah(inc-exp)}</b></div></div><div class="card"><b>Pengeluaran per kategori</b>${top.length?top.map(([c,v])=>`<div style="margin-top:10px"><div class="row"><span>${escapeHtml(c)}</span><b>${rupiah(v)}</b></div><div class="progress"><div class="bar" style="width:${total?Math.min(100,v/total*100):0}%"></div></div></div>`).join(''):'<div class="empty">Belum ada pengeluaran bulan ini.</div>'}</div>`
+ body.innerHTML=`<div class="card"><div class="row"><span>Pemasukan</span><b class="green">${rupiah(inc)}</b></div><div class="row" style="margin-top:8px"><span>Pengeluaran</span><b class="red">${rupiah(exp)}</b></div><div class="row" style="margin-top:8px"><span>Sisa</span><b>${rupiah(inc-exp)}</b></div></div><div class="card"><b>Pengeluaran per kategori</b>${top.length?top.map(([c,v])=>`<div style="margin-top:10px"><div class="row"><span>${escapeHtml(c)}</span><b>${rupiah(v)}</b></div><div class="progress"><div class="bar" style="width:${total?Math.min(100,v/total*100):0}%"></div></div></div>`).join(''):'<div class="empty">Belum ada pengeluaran bulan ini.</div>'}</div>`
 }
 
 function backup(){
@@ -448,10 +463,12 @@ function resetData(){
   localStorage.removeItem(KEY);localStorage.removeItem(CAT_KEY);location.reload()
 }
 function renderReport(){
+  const reportEl=document.getElementById('report');
+  if(!reportEl)return;
   const inc=monthTotal('income'),exp=monthTotal('expense');
   const m=db.transactions.filter(x=>x.type==='expense'&&monthKey(x.date)===monthKey(new Date())).reduce((a,x)=>{const c=normalizeCategory(x.category);a[c]=(a[c]||0)+Number(x.amount);return a},{});
   const top=Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  report.innerHTML=`<div class="row"><span>Pemasukan bulan ini</span><b class="green">${rupiah(inc)}</b></div><div class="row" style="margin-top:10px"><span>Pengeluaran bulan ini</span><b class="red">${rupiah(exp)}</b></div><div class="row" style="margin-top:10px"><span>Sisa bulan ini</span><b>${rupiah(inc-exp)}</b></div><hr><b>Kategori pengeluaran terbesar</b>${top.map(x=>`<div class="row" style="margin-top:8px"><span>${escapeHtml(x[0])}</span><b>${rupiah(x[1])}</b></div>`).join('')||'<div class="muted" style="margin-top:8px">Belum ada data.</div>'}`
+  reportEl.innerHTML=`<div class="row"><span>Pemasukan bulan ini</span><b class="green">${rupiah(inc)}</b></div><div class="row" style="margin-top:10px"><span>Pengeluaran bulan ini</span><b class="red">${rupiah(exp)}</b></div><div class="row" style="margin-top:10px"><span>Sisa bulan ini</span><b>${rupiah(inc-exp)}</b></div><hr><b>Kategori pengeluaran terbesar</b>${top.map(x=>`<div class="row" style="margin-top:8px"><span>${escapeHtml(x[0])}</span><b>${rupiah(x[1])}</b></div>`).join('')||'<div class="muted" style="margin-top:8px">Belum ada data.</div>'}`
 }
 function renderAll(){renderHome();renderTransactions();renderBudgets();renderReport()}
 renderAll();
