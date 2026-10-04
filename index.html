@@ -56,6 +56,8 @@ hr{border:0;border-top:1px solid var(--line);margin:14px 0}
 <div id="modal" class="modal"><div class="sheet"><div class="row"><h2 id="modalTitle" style="margin:0">DompetKu</h2><button class="ghost" onclick="closeModal()">✕</button></div><div id="modalBody"></div></div></div>
 
 <script>
+/* DompetKu v2.3 - kategori transaksi terstandar */
+
 const KEY='dompetku_v2';
 let db=JSON.parse(localStorage.getItem(KEY)||'null')||{transactions:[],budgets:[],wallets:[{id:1,name:'Cash'}],transfers:[],goals:[],bills:[],debts:[],settings:{monthlyBudget:0}};
 if(!Array.isArray(db.transfers)) db.transfers=[];
@@ -78,7 +80,19 @@ function openTx(type,edit=null){
 let x=edit||{date:new Date().toISOString().slice(0,10),amount:'',category:type==='income'?'Gaji':'Makan',wallet:db.wallets[0]?.id||1,note:''};
 openModal(type==='income'?'Tambah Pemasukan':'Tambah Pengeluaran',`<form onsubmit="submitTx(event,'${type}',${edit?edit.id:'null'})">
 <div class="field"><label>Nominal</label><input id="famount" type="number" min="1" value="${x.amount}" required></div>
-<div class="field"><label>Kategori</label><input id="fcat" value="${x.category}" required></div>
+<div class="field"><label>Kategori</label>
+<select id="fcat" required>
+<option value="Makanan" ${normalizeCategory(x.category)==='Makanan'?'selected':''}>🍚 Makanan</option>
+<option value="Jalan Jalan" ${normalizeCategory(x.category)==='Jalan Jalan'?'selected':''}>🎯 Jalan Jalan</option>
+<option value="Transportasi" ${normalizeCategory(x.category)==='Transportasi'?'selected':''}>🚗 Transportasi</option>
+<option value="Rumah" ${normalizeCategory(x.category)==='Rumah'?'selected':''}>🏠 Rumah</option>
+<option value="Tagihan" ${normalizeCategory(x.category)==='Tagihan'?'selected':''}>💡 Tagihan</option>
+<option value="Belanja" ${normalizeCategory(x.category)==='Belanja'?'selected':''}>🛍️ Belanja</option>
+<option value="Hiburan" ${normalizeCategory(x.category)==='Hiburan'?'selected':''}>🎮 Hiburan</option>
+<option value="Kesehatan" ${normalizeCategory(x.category)==='Kesehatan'?'selected':''}>🏥 Kesehatan</option>
+<option value="Pendidikan" ${normalizeCategory(x.category)==='Pendidikan'?'selected':''}>📚 Pendidikan</option>
+<option value="Lainnya" ${normalizeCategory(x.category)==='Lainnya'?'selected':''}>🧾 Lainnya</option>
+</select></div>
 <div class="field"><label>Dompet</label><select id="fwallet">${db.wallets.map(w=>`<option value="${w.id}" ${String(x.wallet)==String(w.id)?'selected':''}>${w.name}</option>`).join('')}</select></div>
 <div class="field"><label>Tanggal</label><input id="fdate" type="date" value="${x.date}" required></div>
 <div class="field"><label>Catatan</label><input id="fnote" value="${x.note||''}" placeholder="Opsional"></div>
