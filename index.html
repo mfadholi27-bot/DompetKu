@@ -27,6 +27,10 @@ input,select{width:100%;padding:12px;border:1px solid var(--line);border-radius:
 .screen{display:none}.screen.active{display:block}.empty{text-align:center;color:var(--muted);padding:25px 10px}
 .modal{position:fixed;inset:0;background:#0007;display:none;align-items:flex-end;z-index:20}.modal.show{display:flex}.sheet{background:#fff;width:100%;border-radius:22px 22px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));max-height:92vh;overflow:auto}
 .actions{display:flex;gap:8px}.actions>*{flex:1}.mini{padding:7px 9px;font-size:12px}.pill{display:inline-block;padding:5px 9px;border-radius:99px;font-size:11px;font-weight:800;background:#eef5f4;color:var(--primary)}
+.category-panel{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;padding:20px;display:none}
+.category-box{background:#fff;max-width:520px;margin:40px auto;padding:18px;border-radius:18px;max-height:88vh;overflow:auto}
+.cat-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #eee}
+.cat-add{display:flex;gap:8px;margin-top:12px}.cat-add input{margin-top:0}
 hr{border:0;border-top:1px solid var(--line);margin:14px 0}
 </style>
 </head>
@@ -55,125 +59,251 @@ hr{border:0;border-top:1px solid var(--line);margin:14px 0}
 <nav class="nav"><button class="active" onclick="show('home',this)">🏠<br>Beranda</button><button onclick="show('transactions',this)">🧾<br>Transaksi</button><button onclick="show('budgets',this)">📊<br>Anggaran</button><button onclick="show('more',this)">⚙️<br>Lainnya</button></nav>
 <div id="modal" class="modal"><div class="sheet"><div class="row"><h2 id="modalTitle" style="margin:0">DompetKu</h2><button class="ghost" onclick="closeModal()">✕</button></div><div id="modalBody"></div></div></div>
 
+<div id="categoryPanel" class="category-panel">
+ <div class="category-box">
+  <div class="row"><h3 style="margin:0">🏷️ Kelola Kategori</h3><button class="ghost" onclick="closeCategoryManager()">✕</button></div>
+  <p class="muted" style="font-size:13px">Kategori ini digunakan bersama oleh pemasukan, pengeluaran, dan anggaran.</p>
+  <div id="categoryList"></div>
+  <div class="cat-add">
+   <input id="newCategory" placeholder="Contoh: Bensin">
+   <button class="primary" onclick="addCategory()">Tambah</button>
+  </div>
+ </div>
+</div>
 
 <script>
-/* DompetKu v2.5 - unified categories */
-(function(){
-  const KEY='dompetku_categories_v25';
-  const DEFAULTS=[
-    'Gaji','Bonus','Makanan','Transportasi','Rumah','Tagihan',
-    'Belanja','Hiburan','Kesehatan','Pendidikan','Anak','Lainnya'
-  ];
-  function loadCats(){
-    try{
-      const x=JSON.parse(localStorage.getItem(KEY)||'null');
-      if(Array.isArray(x)&&x.length) return [...new Set(x)];
-    }catch(e){}
-    localStorage.setItem(KEY,JSON.stringify(DEFAULTS));
-    return DEFAULTS.slice();
-  }
-  window.DK25={
-    getCategories:loadCats,
-    addCategory:function(name){
-      name=(name||'').trim();
-      if(!name) return false;
-      const a=loadCats();
-      if(a.map(x=>x.toLowerCase()).includes(name.toLowerCase())) return false;
-      a.push(name); localStorage.setItem(KEY,JSON.stringify(a)); return true;
-    },
-    removeCategory:function(name){
-      const a=loadCats().filter(x=>x!==name);
-      if(a.length<1) return false;
-      localStorage.setItem(KEY,JSON.stringify(a)); return true;
-    },
-    refresh:function(){
-      const cats=loadCats();
-      document.querySelectorAll('select[data-dk-category]').forEach(sel=>{
-        const old=sel.value;
-        sel.innerHTML=cats.map(c=>`<option value="${c.replace(/"/g,'&quot;')}">${c}</option>`).join('');
-        if(cats.includes(old)) sel.value=old;
-      });
-    }
-  };
-  window.addEventListener('DOMContentLoaded',()=>DK25.refresh());
-})();
-</script>
-<script>
 const KEY='dompetku_v2';
-let db=JSON.parse(localStorage.getItem(KEY)||'null')||{transactions:[],budgets:[],wallets:[{id:1,name:'Cash'}],transfers:[],goals:[],bills:[],debts:[],settings:{monthlyBudget:0}};
+const CAT_KEY='dompetku_categories_v25';
+
+let db=JSON.parse(localStorage.getItem(KEY)||'null')||{
+  transactions:[],budgets:[],wallets:[{id:1,name:'Cash'}],transfers:[],
+  goals:[],bills:[],debts:[],settings:{monthlyBudget:0}
+};
+
+if(!Array.isArray(db.transactions)) db.transactions=[];
+if(!Array.isArray(db.budgets)) db.budgets=[];
 if(!Array.isArray(db.transfers)) db.transfers=[];
 if(!Array.isArray(db.wallets)||!db.wallets.length) db.wallets=[{id:1,name:'Cash'}];
+if(!Array.isArray(db.goals)) db.goals=[];
+if(!Array.isArray(db.bills)) db.bills=[];
+if(!Array.isArray(db.debts)) db.debts=[];
+if(!db.settings) db.settings={monthlyBudget:0};
+
 const rupiah=n=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Number(n)||0);
 const uid=()=>Date.now()+Math.random();
 const categoryAliases={makan:'Makanan',makanan:'Makanan',transport:'Transportasi',transportasi:'Transportasi',bensin:'Transportasi',listrik:'Tagihan',tagihan:'Tagihan'};
-function normalizeCategory(v){let s=String(v||'').trim();let k=s.toLowerCase();return categoryAliases[k]||s;}
-function walletBalance(id){let t=db.transactions.filter(x=>Number(x.wallet)===Number(id)).reduce((s,x)=>s+(x.type==='income'?Number(x.amount):-Number(x.amount)),0);let tr=db.transfers.reduce((s,x)=>s+(Number(x.from)===Number(id)?-Number(x.amount):0)+(Number(x.to)===Number(id)?Number(x.amount):0),0);return t+tr;}
-function transferTotal(){return db.transfers.reduce((s,x)=>s+Number(x.amount),0);}
+function normalizeCategory(v){let s=String(v||'').trim();let k=s.toLowerCase();return categoryAliases[k]||s}
+
+const DEFAULT_CATEGORIES=['Gaji','Bonus','Makanan','Transportasi','Rumah','Tagihan','Belanja','Hiburan','Kesehatan','Pendidikan','Anak','Lainnya'];
+
+function getCategories(){
+  try{
+    const saved=JSON.parse(localStorage.getItem(CAT_KEY)||'null');
+    if(Array.isArray(saved)&&saved.length) return [...new Set(saved.map(x=>String(x).trim()).filter(Boolean))];
+  }catch(e){}
+  localStorage.setItem(CAT_KEY,JSON.stringify(DEFAULT_CATEGORIES));
+  return DEFAULT_CATEGORIES.slice();
+}
+
+function saveCategories(cats){
+  localStorage.setItem(CAT_KEY,JSON.stringify([...new Set(cats.filter(Boolean))]));
+}
+
+function addCategoryValue(name){
+  name=String(name||'').trim();
+  if(!name) return false;
+  const cats=getCategories();
+  if(cats.some(c=>c.toLowerCase()===name.toLowerCase())) return false;
+  cats.push(name);saveCategories(cats);return true;
+}
+
+function categoryForSelect(value){
+  const text=String(value||'').trim();
+  if(!text) return '';
+  const cats=getCategories();
+  const found=cats.find(c=>c.toLowerCase()===text.toLowerCase());
+  return found||normalizeCategory(text);
+}
+
+function categoryOptions(selected){
+  return getCategories().map(c=>`<option value="${escapeHtml(c)}" ${c.toLowerCase()===String(selected||'').toLowerCase()?'selected':''}>${escapeHtml(c)}</option>`).join('');
+}
+
+function escapeHtml(s){
+  return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function migrateCategories(){
+  const extras=[];
+  db.transactions.forEach(t=>{if(t.category)extras.push(normalizeCategory(t.category))});
+  db.budgets.forEach(b=>{if(b.category)extras.push(normalizeCategory(b.category))});
+  const cats=getCategories();
+  extras.forEach(c=>{if(c&&!cats.some(x=>x.toLowerCase()===c.toLowerCase()))cats.push(c)});
+  saveCategories(cats);
+}
+migrateCategories();
+
+function walletBalance(id){
+  const t=db.transactions.filter(x=>Number(x.wallet)===Number(id)).reduce((s,x)=>s+(x.type==='income'?Number(x.amount):-Number(x.amount)),0);
+  const tr=db.transfers.reduce((s,x)=>s+(Number(x.from)===Number(id)?-Number(x.amount):0)+(Number(x.to)===Number(id)?Number(x.amount):0),0);
+  return t+tr;
+}
+
 const monthKey=d=>new Date(d).toISOString().slice(0,7);
 function save(){localStorage.setItem(KEY,JSON.stringify(db));renderAll()}
 function total(type){return db.transactions.filter(x=>x.type===type).reduce((s,x)=>s+Number(x.amount),0)}
-function monthTotal(type){let m=monthKey(new Date());return db.transactions.filter(x=>x.type===type&&monthKey(x.date)===m).reduce((s,x)=>s+Number(x.amount),0)}
-function categoryTotal(cat){return db.transactions.filter(x=>x.type==='expense'&&monthKey(x.date)===monthKey(new Date())&&normalizeCategory(x.category).toLowerCase()===normalizeCategory(cat).toLowerCase()).reduce((s,x)=>s+Number(x.amount),0)}
-function show(id,btn){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));btn.classList.add('active');renderAll()}
-function openModal(t,b){modalTitle.textContent=t;modalBody.innerHTML=b;modal.classList.add('show')}
-function closeModal(){modal.classList.remove('show')}
-function openTx(type,edit=null){
-let x=edit||{date:new Date().toISOString().slice(0,10),amount:'',category:type==='income'?'Gaji':'Makan',wallet:db.wallets[0]?.id||1,note:''};
-openModal(type==='income'?'Tambah Pemasukan':'Tambah Pengeluaran',`<form onsubmit="submitTx(event,'${type}',${edit?edit.id:'null'})">
-<div class="field"><label>Nominal</label><input id="famount" type="number" min="1" value="${x.amount}" required></div>
-<div class="field"><label>Kategori</label><input id="fcat" value="${x.category}" required></div>
-<div class="field"><label>Dompet</label><select id="fwallet">${db.wallets.map(w=>`<option value="${w.id}" ${String(x.wallet)==String(w.id)?'selected':''}>${w.name}</option>`).join('')}</select></div>
-<div class="field"><label>Tanggal</label><input id="fdate" type="date" value="${x.date}" required></div>
-<div class="field"><label>Catatan</label><input id="fnote" value="${x.note||''}" placeholder="Opsional"></div>
-<div class="actions"><button type="button" class="ghost" onclick="closeModal()">Batal</button><button class="primary">Simpan</button></div></form>`)}
-function submitTx(e,type,editId){e.preventDefault();let o={id:editId&&editId!=='null'?Number(editId):uid(),type,amount:Number(famount.value),category:normalizeCategory(fcat.value),wallet:Number(fwallet.value),date:fdate.value,note:fnote.value.trim()};let i=db.transactions.findIndex(x=>x.id===o.id);i>=0?db.transactions[i]=o:db.transactions.push(o);save();closeModal()}
-function delTx(i){if(confirm('Hapus transaksi ini?')){db.transactions=db.transactions.filter(x=>x.id!==i);save()}}
-function renderTransactions(){let q=(document.getElementById('search')?.value||'').toLowerCase();let a=[...db.transactions].filter(x=>(normalizeCategory(x.category)+' '+(x.note||'')).toLowerCase().includes(q)).sort((a,b)=>b.date.localeCompare(a.date));txList.innerHTML=a.length?a.map(x=>`<div class="tx"><div class="row"><div><div class="tx-title">${normalizeCategory(x.category)}</div><div class="tx-meta">${x.date} • ${db.wallets.find(w=>w.id==x.wallet)?.name||'Dompet'}${x.note?' • '+x.note:''}</div></div><div class="${x.type==='income'?'green':'red'}"><b>${x.type==='income'?'+':'−'}${rupiah(x.amount)}</b><br><button class="mini ghost" onclick='openTx("${x.type}",${JSON.stringify(x).replace(/"/g,'&quot;')})'>Edit</button> <button class="mini dangerBtn" onclick="delTx(${x.id})">Hapus</button></div></div></div>`).join(''):'<div class="empty">Belum ada transaksi.</div>'}
-function renderHome(){
-let inc=total('income'),exp=total('expense'),bud=db.settings.monthlyBudget||0,me=monthTotal('expense');balance.textContent=rupiah(inc-exp);income.textContent=rupiah(inc);expense.textContent=rupiah(exp);monthExpense.textContent=rupiah(me);monthBudget.textContent=bud?rupiah(bud):'Belum diatur';
-let pct=bud?Math.min(100,me/bud*100):0;monthBar.style.width=pct+'%';monthBar.className='bar '+(pct>=90?'danger':pct>=70?'warn':'');
-let now=new Date(),days=now.getDate(),left=new Date(now.getFullYear(),now.getMonth()+1,0).getDate()-days+1;dailyLimit.textContent=bud?rupiah(Math.max(0,(bud-me)/left)):'-';
-let st=pct>=100?['Boros','Pengeluaran sudah melewati anggaran.','BOROS']:pct>=70?['Waspada','Pengeluaran mulai mendekati batas.','WASPADA']:['Aman','Pengeluaran masih sesuai anggaran.','AMAN'];statusText.textContent=st[0];statusNote.textContent=st[1];statusPill.textContent=st[2];
-budgetSummary.innerHTML=db.budgets.length?db.budgets.slice(0,3).map(b=>{let u=categoryTotal(b.category),p=Math.min(100,u/b.amount*100);return `<div class="card"><div class="row"><b>${b.category}</b><span>${rupiah(u)} / ${rupiah(b.amount)}</span></div><div class="progress"><div class="bar ${p>=100?'danger':p>=70?'warn':''}" style="width:${p}%"></div></div></div>`}).join(''):'<div class="card empty">Belum ada anggaran kategori.</div>';
-let r=[...db.transactions].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5);recent.innerHTML=r.length?r.map(x=>`<div class="tx"><div class="row"><span><b>${normalizeCategory(x.category)}</b><br><small class="muted">${x.date}</small></span><b class="${x.type==='income'?'green':'red'}">${x.type==='income'?'+':'−'}${rupiah(x.amount)}</b></div></div>`).join(''):'<div class="empty">Belum ada transaksi.</div>'}
-function renderBudgets(){
-budgetList.innerHTML=db.budgets.map(b=>{let u=categoryTotal(b.category),p=Math.min(100,u/b.amount*100);return `<div class="card"><div class="row"><b>${b.category}</b><button class="mini dangerBtn" onclick="delBudget(${b.id})">Hapus</button></div><div style="margin-top:8px">${rupiah(u)} / ${rupiah(b.amount)}</div><div class="progress"><div class="bar ${p>=100?'danger':p>=70?'warn':''}" style="width:${p}%"></div></div></div>`}).join('')||'<div class="card empty">Belum ada anggaran.</div>';
-goalList.innerHTML=db.goals.map(g=>`<div class="card"><div class="row"><b>🎯 ${g.name}</b><span>${rupiah(g.saved)} / ${rupiah(g.target)}</span></div><div class="progress"><div class="bar" style="width:${Math.min(100,g.saved/g.target*100)}%"></div></div></div>`).join('')||'<div class="card empty">Belum ada tujuan tabungan.</div>'}
-function openBudget(){openModal('Tambah Anggaran',`<form onsubmit="event.preventDefault();db.budgets.push({id:uid(),category:normalizeCategory(bc.value),amount:Number(ba.value)});save();closeModal()"><div class="field"><label>Kategori</label><input id="bc" placeholder="Contoh: Makan" required></div><div class="field"><label>Anggaran bulanan</label><input id="ba" type="number" min="1" required></div><button class="primary" style="width:100%">Simpan</button></form>`)}
-function delBudget(i){db.budgets=db.budgets.filter(x=>x.id!==i);save()}
-function openGoal(){openModal('Tambah Tujuan',`<form onsubmit="event.preventDefault();db.goals.push({id:uid(),name:gn.value.trim(),target:Number(gt.value),saved:Number(gs.value||0)});save();closeModal()"><div class="field"><label>Nama tujuan</label><input id="gn" placeholder="Dana darurat" required></div><div class="field"><label>Target</label><input id="gt" type="number" min="1" required></div><div class="field"><label>Sudah terkumpul</label><input id="gs" type="number" min="0" value="0"></div><button class="primary" style="width:100%">Simpan</button></form>`)}
-function openWallet(){openModal('Dompet',`${db.wallets.map(w=>`<div class="tx"><div class="row"><b>${w.name}</b><b>${rupiah(walletBalance(w.id))}</b></div></div>`).join('')}<div class="actions"><button class="ghost" onclick="openTransfer()">🔄 Transfer</button><button class="ghost" onclick="closeModal()">Tutup</button></div><form onsubmit="event.preventDefault();db.wallets.push({id:uid(),name:wn.value.trim()});save();closeModal()"><div class="field"><label>Tambah dompet</label><input id="wn" placeholder="Bank / E-wallet" required></div><button class="primary" style="width:100%">Tambah</button></form>`)}
-function openTransfer(){if(db.wallets.length<2){alert('Tambahkan minimal 2 dompet terlebih dahulu.');return}openModal('Transfer Antar Dompet',`<form onsubmit="event.preventDefault();let a=Number(tf.value),from=Number(tfrom.value),to=Number(tto.value);if(from===to){alert('Dompet asal dan tujuan harus berbeda.');return}if(a<=0){alert('Nominal harus lebih dari 0.');return}if(walletBalance(from)<a){alert('Saldo dompet asal tidak cukup.');return}db.transfers.push({id:uid(),amount:a,from,to,date:td.value,note:tn.value.trim()});save();closeModal()"><div class="field"><label>Nominal</label><input id="tf" type="number" min="1" required></div><div class="field"><label>Dari dompet</label><select id="tfrom">${db.wallets.map(w=>`<option value="${w.id}">${w.name} — ${rupiah(walletBalance(w.id))}</option>`).join('')}</select></div><div class="field"><label>Ke dompet</label><select id="tto">${db.wallets.map((w,i)=>`<option value="${w.id}" ${i===1?'selected':''}>${w.name}</option>`).join('')}</select></div><div class="field"><label>Tanggal</label><input id="td" type="date" value="${new Date().toISOString().slice(0,10)}" required></div><div class="field"><label>Catatan</label><input id="tn" placeholder="Opsional"></div><button class="primary" style="width:100%">Transfer</button></form>`)}
-function openBill(){openModal('Tagihan',`${db.bills.map(b=>`<div class="card"><div class="row"><b>${b.name}</b><span>${rupiah(b.amount)}</span></div><small class="muted">Jatuh tempo tanggal ${b.day}</small></div>`).join('')||'<div class="empty">Belum ada tagihan.</div>'}<form onsubmit="event.preventDefault();db.bills.push({id:uid(),name:bn.value.trim(),amount:Number(bm.value),day:Number(bd.value)});save();closeModal()"><div class="field"><label>Nama</label><input id="bn" required></div><div class="field"><label>Nominal</label><input id="bm" type="number" required></div><div class="field"><label>Tanggal jatuh tempo</label><input id="bd" type="number" min="1" max="31" required></div><button class="primary" style="width:100%">Tambah</button></form>`)}
-function openDebt(type){openModal(type==='debt'?'Utang':'Piutang',`<form onsubmit="event.preventDefault();db.debts.push({id:uid(),type,name:dn.value.trim(),amount:Number(da.value),note:di.value});save();closeModal()"><div class="field"><label>Nama</label><input id="dn" required></div><div class="field"><label>Nominal</label><input id="da" type="number" required></div><div class="field"><label>Catatan</label><input id="di"></div><button class="primary" style="width:100%">Simpan</button></form><div class="section-title">Daftar</div>${db.debts.filter(x=>x.type===type).map(x=>`<div class="tx"><div class="row"><b>${x.name}</b><b>${rupiah(x.amount)}</b></div></div>`).join('')||'<div class="empty">Belum ada.</div>'}`)}
-function openSettings(){openModal('Pengaturan',`<div class="card"><b>Anggaran pengeluaran bulanan</b><input id="mb" type="number" value="${db.settings.monthlyBudget||''}" placeholder="Contoh 3500000"><button class="primary" style="width:100%;margin-top:8px" onclick="db.settings.monthlyBudget=Number(mb.value);save();closeModal()">Simpan</button></div><div class="card"><b>Data pribadi</b><p class="muted">Data DompetKu disimpan lokal di perangkat ini. Tidak ada database online.</p></div>`)}
-function backup(){let blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='DompetKu_Backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
-function restore(e){let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);if(!x.transactions||!x.wallets)throw 0;if(confirm('Ganti data sekarang dengan backup ini?')){db=x;save();alert('Restore berhasil.')}}catch(_){alert('File backup tidak valid.')}};r.readAsText(f);e.target.value=''}
-function resetData(){if(!confirm('Reset semua data DompetKu? Semua transaksi, anggaran, target tabungan, tagihan, utang/piutang, dan dompet tambahan akan dihapus.'))return;if(!confirm('PERINGATAN TERAKHIR: pastikan Anda sudah memiliki backup jika data lama masih diperlukan. Lanjut reset?'))return;localStorage.removeItem(KEY);location.reload()}
-function renderReport(){let inc=monthTotal('income'),exp=monthTotal('expense'),m=db.transactions.filter(x=>x.type==='expense'&&monthKey(x.date)===monthKey(new Date())).reduce((a,x)=>{let c=normalizeCategory(x.category);a[c]=(a[c]||0)+Number(x.amount);return a},{}),top=Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,5);report.innerHTML=`<div class="row"><span>Pemasukan bulan ini</span><b class="green">${rupiah(inc)}</b></div><div class="row" style="margin-top:10px"><span>Pengeluaran bulan ini</span><b class="red">${rupiah(exp)}</b></div><div class="row" style="margin-top:10px"><span>Sisa bulan ini</span><b>${rupiah(inc-exp)}</b></div><hr><b>Kategori pengeluaran terbesar</b>${top.map(x=>`<div class="row" style="margin-top:8px"><span>${x[0]}</span><b>${rupiah(x[1])}</b></div>`).join('')||'<div class="muted" style="margin-top:8px">Belum ada data.</div>'}`}
-function renderAll(){renderHome();renderTransactions();renderBudgets();renderReport()}renderAll();
-</script>
-
-<div id="dk25CategoryPanel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;padding:20px">
- <div style="background:#fff;max-width:520px;margin:40px auto;padding:18px;border-radius:16px">
-  <h3>⚙️ Kelola Kategori</h3>
-  <p style="font-size:13px">Kategori ini digunakan bersama oleh pemasukan, pengeluaran, dan anggaran.</p>
-  <div id="dk25CatList"></div>
-  <div style="display:flex;gap:8px;margin-top:12px">
-   <input id="dk25NewCat" placeholder="Nama kategori" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:10px">
-   <button onclick="DK25Add()">Tambah</button>
-  </div>
-  <button onclick="DK25Close()" style="margin-top:12px">Tutup</button>
- </div>
-</div>
-<script>
-function DK25Render(){
- const el=document.getElementById('dk25CatList'); if(!el)return;
- el.innerHTML=DK25.getCategories().map(c=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #eee"><span>${c}</span><button onclick="DK25Del('${c.replace(/'/g,"\\'")}')">Hapus</button></div>`).join('');
+function monthTotal(type){const m=monthKey(new Date());return db.transactions.filter(x=>x.type===type&&monthKey(x.date)===m).reduce((s,x)=>s+Number(x.amount),0)}
+function categoryTotal(cat){
+  const target=categoryForSelect(cat).toLowerCase();
+  return db.transactions.filter(x=>x.type==='expense'&&monthKey(x.date)===monthKey(new Date())&&categoryForSelect(x.category).toLowerCase()===target).reduce((s,x)=>s+Number(x.amount),0)
 }
-function DK25Open(){document.getElementById('dk25CategoryPanel').style.display='block';DK25Render();}
-function DK25Close(){document.getElementById('dk25CategoryPanel').style.display='none';}
-function DK25Add(){const e=document.getElementById('dk25NewCat');if(DK25.addCategory(e.value)){e.value='';DK25Render();DK25.refresh();}else alert('Kategori kosong atau sudah ada.');}
-function DK25Del(c){if(confirm('Hapus kategori '+c+'?')){DK25.removeCategory(c);DK25Render();DK25.refresh();}}
+
+function show(id,btn){
+  document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));
+  btn.classList.add('active');renderAll()
+}
+function openModal(t,b){document.getElementById('modalTitle').textContent=t;document.getElementById('modalBody').innerHTML=b;document.getElementById('modal').classList.add('show')}
+function closeModal(){document.getElementById('modal').classList.remove('show')}
+
+function openTx(type,edit=null){
+  let x=edit||{date:new Date().toISOString().slice(0,10),amount:'',category:type==='income'?'Gaji':'Makanan',wallet:db.wallets[0]?.id||1,note:''};
+  x.category=categoryForSelect(x.category);
+  openModal(type==='income'?'Tambah Pemasukan':'Tambah Pengeluaran',`
+  <form onsubmit="submitTx(event,'${type}',${edit?edit.id:'null'})">
+    <div class="field"><label>Nominal</label><input id="famount" type="number" min="1" value="${escapeHtml(x.amount)}" required></div>
+    <div class="field"><label>Kategori</label><select id="fcat" required>${categoryOptions(x.category)}</select></div>
+    <div class="field"><label>Dompet</label><select id="fwallet">${db.wallets.map(w=>`<option value="${w.id}" ${String(x.wallet)==String(w.id)?'selected':''}>${escapeHtml(w.name)}</option>`).join('')}</select></div>
+    <div class="field"><label>Tanggal</label><input id="fdate" type="date" value="${escapeHtml(x.date)}" required></div>
+    <div class="field"><label>Catatan</label><input id="fnote" value="${escapeHtml(x.note||'')}" placeholder="Opsional"></div>
+    <div class="actions"><button type="button" class="ghost" onclick="closeModal()">Batal</button><button class="primary">Simpan</button></div>
+  </form>`)
+}
+
+function submitTx(e,type,editId){
+  e.preventDefault();
+  const o={id:editId&&editId!=='null'?Number(editId):uid(),type,amount:Number(document.getElementById('famount').value),category:categoryForSelect(document.getElementById('fcat').value),wallet:Number(document.getElementById('fwallet').value),date:document.getElementById('fdate').value,note:document.getElementById('fnote').value.trim()};
+  const i=db.transactions.findIndex(x=>x.id===o.id);
+  i>=0?db.transactions[i]=o:db.transactions.push(o);save();closeModal()
+}
+
+function delTx(i){if(confirm('Hapus transaksi ini?')){db.transactions=db.transactions.filter(x=>x.id!==i);save()}}
+
+function renderTransactions(){
+  const q=(document.getElementById('search')?.value||'').toLowerCase();
+  const a=[...db.transactions].filter(x=>(normalizeCategory(x.category)+' '+(x.note||'')).toLowerCase().includes(q)).sort((a,b)=>b.date.localeCompare(a.date));
+  document.getElementById('txList').innerHTML=a.length?a.map(x=>`<div class="tx"><div class="row"><div><div class="tx-title">${escapeHtml(normalizeCategory(x.category))}</div><div class="tx-meta">${x.date} • ${escapeHtml(db.wallets.find(w=>w.id==x.wallet)?.name||'Dompet')}${x.note?' • '+escapeHtml(x.note):''}</div></div><div class="${x.type==='income'?'green':'red'}"><b>${x.type==='income'?'+':'−'}${rupiah(x.amount)}</b><br><button class="mini ghost" onclick='openTx("${x.type}",${JSON.stringify(x).replace(/"/g,'&quot;')})'>Edit</button> <button class="mini dangerBtn" onclick="delTx(${x.id})">Hapus</button></div></div></div>`).join(''):'<div class="empty">Belum ada transaksi.</div>'
+}
+
+function renderHome(){
+  const inc=total('income'),exp=total('expense'),bud=db.settings.monthlyBudget||0,me=monthTotal('expense');
+  balance.textContent=rupiah(inc-exp);income.textContent=rupiah(inc);expense.textContent=rupiah(exp);monthExpense.textContent=rupiah(me);monthBudget.textContent=bud?rupiah(bud):'Belum diatur';
+  const pct=bud?Math.min(100,me/bud*100):0;monthBar.style.width=pct+'%';monthBar.className='bar '+(pct>=90?'danger':pct>=70?'warn':'');
+  const now=new Date(),days=now.getDate(),left=new Date(now.getFullYear(),now.getMonth()+1,0).getDate()-days+1;dailyLimit.textContent=bud?rupiah(Math.max(0,(bud-me)/left)):'-';
+  const st=pct>=100?['Boros','Pengeluaran sudah melewati anggaran.','BOROS']:pct>=70?['Waspada','Pengeluaran mulai mendekati batas.','WASPADA']:['Aman','Pengeluaran masih sesuai anggaran.','AMAN'];
+  statusText.textContent=st[0];statusNote.textContent=st[1];statusPill.textContent=st[2];
+  budgetSummary.innerHTML=db.budgets.length?db.budgets.slice(0,3).map(b=>{const u=categoryTotal(b.category),p=Math.min(100,u/b.amount*100);return `<div class="card"><div class="row"><b>${escapeHtml(b.category)}</b><span>${rupiah(u)} / ${rupiah(b.amount)}</span></div><div class="progress"><div class="bar ${p>=100?'danger':p>=70?'warn':''}" style="width:${p}%"></div></div></div>`}).join(''):'<div class="card empty">Belum ada anggaran kategori.</div>';
+  const r=[...db.transactions].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5);
+  recent.innerHTML=r.length?r.map(x=>`<div class="tx"><div class="row"><span><b>${escapeHtml(normalizeCategory(x.category))}</b><br><small class="muted">${x.date}</small></span><b class="${x.type==='income'?'green':'red'}">${x.type==='income'?'+':'−'}${rupiah(x.amount)}</b></div></div>`).join(''):'<div class="empty">Belum ada transaksi.</div>'
+}
+
+function renderBudgets(){
+  budgetList.innerHTML=db.budgets.map(b=>{const u=categoryTotal(b.category),p=Math.min(100,u/b.amount*100);return `<div class="card"><div class="row"><b>${escapeHtml(b.category)}</b><button class="mini dangerBtn" onclick="delBudget(${b.id})">Hapus</button></div><div style="margin-top:8px">${rupiah(u)} / ${rupiah(b.amount)}</div><div class="progress"><div class="bar ${p>=100?'danger':p>=70?'warn':''}" style="width:${p}%"></div></div></div>`}).join('')||'<div class="card empty">Belum ada anggaran.</div>';
+  goalList.innerHTML=db.goals.map(g=>`<div class="card"><div class="row"><b>🎯 ${escapeHtml(g.name)}</b><span>${rupiah(g.saved)} / ${rupiah(g.target)}</span></div><div class="progress"><div class="bar" style="width:${Math.min(100,g.saved/g.target*100)}%"></div></div></div>`).join('')||'<div class="card empty">Belum ada tujuan tabungan.</div>'
+}
+
+function openBudget(){
+  openModal('Tambah Anggaran',`
+  <form onsubmit="event.preventDefault();db.budgets.push({id:uid(),category:categoryForSelect(document.getElementById('bc').value),amount:Number(document.getElementById('ba').value)});save();closeModal()">
+    <div class="field"><label>Kategori</label><select id="bc" required>${categoryOptions('Makanan')}</select></div>
+    <div class="field"><label>Anggaran bulanan</label><input id="ba" type="number" min="1" required></div>
+    <button class="primary" style="width:100%">Simpan</button>
+  </form>`)
+}
+function delBudget(i){db.budgets=db.budgets.filter(x=>x.id!==i);save()}
+
+function openGoal(){openModal('Tambah Tujuan',`<form onsubmit="event.preventDefault();db.goals.push({id:uid(),name:gn.value.trim(),target:Number(gt.value),saved:Number(gs.value||0)});save();closeModal()"><div class="field"><label>Nama tujuan</label><input id="gn" placeholder="Dana darurat" required></div><div class="field"><label>Target</label><input id="gt" type="number" min="1" required></div><div class="field"><label>Sudah terkumpul</label><input id="gs" type="number" min="0" value="0"></div><button class="primary" style="width:100%">Simpan</button></form>`)}
+
+function openWallet(){
+  openModal('Dompet',`${db.wallets.map(w=>`<div class="tx"><div class="row"><b>${escapeHtml(w.name)}</b><b>${rupiah(walletBalance(w.id))}</b></div></div>`).join('')}<div class="actions"><button class="ghost" onclick="openTransfer()">🔄 Transfer</button><button class="ghost" onclick="closeModal()">Tutup</button></div><form onsubmit="event.preventDefault();db.wallets.push({id:uid(),name:wn.value.trim()});save();closeModal()"><div class="field"><label>Tambah dompet</label><input id="wn" placeholder="Bank / E-wallet" required></div><button class="primary" style="width:100%">Tambah</button></form>`)
+}
+
+function openTransfer(){
+  if(db.wallets.length<2){alert('Tambahkan minimal 2 dompet terlebih dahulu.');return}
+  openModal('Transfer Antar Dompet',`<form onsubmit="event.preventDefault();let a=Number(tf.value),from=Number(tfrom.value),to=Number(tto.value);if(from===to){alert('Dompet asal dan tujuan harus berbeda.');return}if(a<=0){alert('Nominal harus lebih dari 0.');return}if(walletBalance(from)<a){alert('Saldo dompet asal tidak cukup.');return}db.transfers.push({id:uid(),amount:a,from,to,date:td.value,note:tn.value.trim()});save();closeModal()"><div class="field"><label>Nominal</label><input id="tf" type="number" min="1" required></div><div class="field"><label>Dari dompet</label><select id="tfrom">${db.wallets.map(w=>`<option value="${w.id}">${escapeHtml(w.name)} — ${rupiah(walletBalance(w.id))}</option>`).join('')}</select></div><div class="field"><label>Ke dompet</label><select id="tto">${db.wallets.map((w,i)=>`<option value="${w.id}" ${i===1?'selected':''}>${escapeHtml(w.name)}</option>`).join('')}</select></div><div class="field"><label>Tanggal</label><input id="td" type="date" value="${new Date().toISOString().slice(0,10)}" required></div><div class="field"><label>Catatan</label><input id="tn" placeholder="Opsional"></div><button class="primary" style="width:100%">Transfer</button></form>`)
+}
+
+function openBill(){openModal('Tagihan',`${db.bills.map(b=>`<div class="card"><div class="row"><b>${escapeHtml(b.name)}</b><span>${rupiah(b.amount)}</span></div><small class="muted">Jatuh tempo tanggal ${b.day}</small></div>`).join('')||'<div class="empty">Belum ada tagihan.</div>'}<form onsubmit="event.preventDefault();db.bills.push({id:uid(),name:bn.value.trim(),amount:Number(bm.value),day:Number(bd.value)});save();closeModal()"><div class="field"><label>Nama</label><input id="bn" required></div><div class="field"><label>Nominal</label><input id="bm" type="number" required></div><div class="field"><label>Tanggal jatuh tempo</label><input id="bd" type="number" min="1" max="31" required></div><button class="primary" style="width:100%">Tambah</button></form>`)}
+
+function openDebt(type){openModal(type==='debt'?'Utang':'Piutang',`<form onsubmit="event.preventDefault();db.debts.push({id:uid(),type,name:dn.value.trim(),amount:Number(da.value),note:di.value});save();closeModal()"><div class="field"><label>Nama</label><input id="dn" required></div><div class="field"><label>Nominal</label><input id="da" type="number" required></div><div class="field"><label>Catatan</label><input id="di"></div><button class="primary" style="width:100%">Simpan</button></form><div class="section-title">Daftar</div>${db.debts.filter(x=>x.type===type).map(x=>`<div class="tx"><div class="row"><b>${escapeHtml(x.name)}</b><b>${rupiah(x.amount)}</b></div></div>`).join('')||'<div class="empty">Belum ada.</div>'}`)}
+
+function openSettings(){
+  openModal('Pengaturan',`
+    <div class="card">
+      <b>Anggaran pengeluaran bulanan</b>
+      <input id="mb" type="number" value="${db.settings.monthlyBudget||''}" placeholder="Contoh 3500000">
+      <button class="primary" style="width:100%;margin-top:8px" onclick="db.settings.monthlyBudget=Number(mb.value);save();closeModal()">Simpan</button>
+    </div>
+    <div class="card">
+      <b>🏷️ Kategori</b>
+      <p class="muted">Satu daftar kategori digunakan bersama untuk pemasukan, pengeluaran, dan anggaran.</p>
+      <button class="ghost" style="width:100%" onclick="openCategoryManager()">⚙️ Kelola Kategori</button>
+    </div>
+    <div class="card">
+      <b>Data pribadi</b>
+      <p class="muted">Data DompetKu disimpan lokal di perangkat ini. Tidak ada database online.</p>
+    </div>
+  `)
+}
+
+function openCategoryManager(){
+  closeModal();
+  renderCategoryManager();
+  document.getElementById('categoryPanel').style.display='block';
+}
+function closeCategoryManager(){document.getElementById('categoryPanel').style.display='none'}
+function renderCategoryManager(){
+  const list=document.getElementById('categoryList');
+  list.innerHTML=getCategories().map(c=>`<div class="cat-row"><span>${escapeHtml(c)}</span><button class="mini dangerBtn" onclick='deleteCategory(${JSON.stringify(c)})'>Hapus</button></div>`).join('');
+}
+function addCategory(){
+  const input=document.getElementById('newCategory');
+  if(addCategoryValue(input.value)){input.value='';renderCategoryManager()}else alert('Kategori kosong atau sudah ada.');
+}
+function deleteCategory(c){
+  if(getCategories().length<=1){alert('Minimal harus ada satu kategori.');return}
+  if(confirm('Hapus kategori '+c+'?')){saveCategories(getCategories().filter(x=>x!==c));renderCategoryManager()}
+}
+
+function backup(){
+  const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='DompetKu_Backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)
+}
+function restore(e){
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const x=JSON.parse(r.result);
+      if(!x.transactions||!x.wallets)throw 0;
+      if(confirm('Ganti data sekarang dengan backup ini?')){db=x;save();migrateCategories();alert('Restore berhasil.')}
+    }catch(_){alert('File backup tidak valid.')}
+  };
+  r.readAsText(f);e.target.value=''
+}
+function resetData(){
+  if(!confirm('Reset semua data DompetKu? Semua transaksi, anggaran, target tabungan, tagihan, utang/piutang, dan dompet tambahan akan dihapus.'))return;
+  if(!confirm('PERINGATAN TERAKHIR: pastikan Anda sudah memiliki backup jika data lama masih diperlukan. Lanjut reset?'))return;
+  localStorage.removeItem(KEY);localStorage.removeItem(CAT_KEY);location.reload()
+}
+function renderReport(){
+  const inc=monthTotal('income'),exp=monthTotal('expense');
+  const m=db.transactions.filter(x=>x.type==='expense'&&monthKey(x.date)===monthKey(new Date())).reduce((a,x)=>{const c=normalizeCategory(x.category);a[c]=(a[c]||0)+Number(x.amount);return a},{});
+  const top=Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  report.innerHTML=`<div class="row"><span>Pemasukan bulan ini</span><b class="green">${rupiah(inc)}</b></div><div class="row" style="margin-top:10px"><span>Pengeluaran bulan ini</span><b class="red">${rupiah(exp)}</b></div><div class="row" style="margin-top:10px"><span>Sisa bulan ini</span><b>${rupiah(inc-exp)}</b></div><hr><b>Kategori pengeluaran terbesar</b>${top.map(x=>`<div class="row" style="margin-top:8px"><span>${escapeHtml(x[0])}</span><b>${rupiah(x[1])}</b></div>`).join('')||'<div class="muted" style="margin-top:8px">Belum ada data.</div>'}`
+}
+function renderAll(){renderHome();renderTransactions();renderBudgets();renderReport()}
+renderAll();
 </script>
 </body></html>
