@@ -209,21 +209,115 @@ function renderHome(){
 }
 
 function renderBudgets(){
-  budgetList.innerHTML=db.budgets.map(b=>{const u=categoryTotal(b.category),p=Math.min(100,u/b.amount*100);return `<div class="card"><div class="row"><b>${escapeHtml(b.category)}</b><button class="mini dangerBtn" onclick="delBudget(${b.id})">Hapus</button></div><div style="margin-top:8px">${rupiah(u)} / ${rupiah(b.amount)}</div><div class="progress"><div class="bar ${p>=100?'danger':p>=70?'warn':''}" style="width:${p}%"></div></div></div>`}).join('')||'<div class="card empty">Belum ada anggaran.</div>';
-  goalList.innerHTML=db.goals.map(g=>`<div class="card"><div class="row"><b>🎯 ${escapeHtml(g.name)}</b><span>${rupiah(g.saved)} / ${rupiah(g.target)}</span></div><div class="progress"><div class="bar" style="width:${Math.min(100,g.saved/g.target*100)}%"></div></div></div>`).join('')||'<div class="card empty">Belum ada tujuan tabungan.</div>'
+  budgetList.innerHTML=db.budgets.map(b=>{
+    const u=categoryTotal(b.category),p=Math.min(100,u/b.amount*100);
+    return `<div class="card">
+      <div class="row">
+        <b>${escapeHtml(b.category)}</b>
+        <div>
+          <button class="mini ghost" onclick="openBudget(${b.id})">Edit</button>
+          <button class="mini dangerBtn" onclick="delBudget(${b.id})">Hapus</button>
+        </div>
+      </div>
+      <div style="margin-top:8px">${rupiah(u)} / ${rupiah(b.amount)}</div>
+      <div class="progress"><div class="bar ${p>=100?'danger':p>=70?'warn':''}" style="width:${p}%"></div></div>
+    </div>`
+  }).join('')||'<div class="card empty">Belum ada anggaran.</div>';
+
+  goalList.innerHTML=db.goals.map(g=>{
+    const pct=Math.min(100,g.target?g.saved/g.target*100:0);
+    return `<div class="card">
+      <div class="row">
+        <b>🎯 ${escapeHtml(g.name)}</b>
+        <div>
+          <button class="mini ghost" onclick="openGoal(${g.id})">Edit</button>
+          <button class="mini dangerBtn" onclick="delGoal(${g.id})">Hapus</button>
+        </div>
+      </div>
+      <div style="margin-top:8px">${rupiah(g.saved)} / ${rupiah(g.target)}</div>
+      <div class="progress"><div class="bar" style="width:${pct}%"></div></div>
+    </div>`
+  }).join('')||'<div class="card empty">Belum ada tujuan tabungan.</div>'
 }
 
-function openBudget(){
-  openModal('Tambah Anggaran',`
-  <form onsubmit="event.preventDefault();db.budgets.push({id:uid(),category:categoryForSelect(document.getElementById('bc').value),amount:Number(document.getElementById('ba').value)});save();closeModal()">
-    <div class="field"><label>Kategori</label><select id="bc" required>${categoryOptions('Makanan')}</select></div>
-    <div class="field"><label>Anggaran bulanan</label><input id="ba" type="number" min="1" required></div>
-    <button class="primary" style="width:100%">Simpan</button>
+function openBudget(editId=null){
+  const edit=editId==null?null:db.budgets.find(x=>x.id===editId);
+  if(editId!=null && !edit){alert('Anggaran tidak ditemukan.');return}
+
+  const title=edit?'Edit Anggaran':'Tambah Anggaran';
+  const category=edit?edit.category:'Makanan';
+  const amount=edit?edit.amount:'';
+
+  openModal(title,`
+  <form onsubmit="
+    event.preventDefault();
+    const cat=categoryForSelect(document.getElementById('bc').value);
+    const amount=Number(document.getElementById('ba').value);
+    if(!amount || amount<=0){alert('Nominal anggaran harus lebih dari 0.');return;}
+    if(${edit?'true':'false'}){
+      const i=db.budgets.findIndex(x=>x.id===${edit?edit.id:'null'});
+      if(i>=0) db.budgets[i]={...db.budgets[i],category:cat,amount:amount};
+    }else{
+      db.budgets.push({id:uid(),category:cat,amount:amount});
+    }
+    save();
+    closeModal();
+  ">
+    <div class="field"><label>Kategori</label><select id="bc" required>${categoryOptions(category)}</select></div>
+    <div class="field"><label>Anggaran bulanan</label><input id="ba" type="number" min="1" value="${amount}" required></div>
+    <button class="primary" style="width:100%">${edit?'Simpan Perubahan':'Simpan'}</button>
   </form>`)
 }
-function delBudget(i){db.budgets=db.budgets.filter(x=>x.id!==i);save()}
 
-function openGoal(){openModal('Tambah Tujuan',`<form onsubmit="event.preventDefault();db.goals.push({id:uid(),name:gn.value.trim(),target:Number(gt.value),saved:Number(gs.value||0)});save();closeModal()"><div class="field"><label>Nama tujuan</label><input id="gn" placeholder="Dana darurat" required></div><div class="field"><label>Target</label><input id="gt" type="number" min="1" required></div><div class="field"><label>Sudah terkumpul</label><input id="gs" type="number" min="0" value="0"></div><button class="primary" style="width:100%">Simpan</button></form>`)}
+function delBudget(i){
+  if(confirm('Hapus anggaran ini?')){
+    db.budgets=db.budgets.filter(x=>x.id!==i);
+    save();
+  }
+}
+
+function openGoal(editId=null){
+  const edit=editId==null?null:db.goals.find(x=>x.id===editId);
+  if(editId!=null && !edit){alert('Tujuan tidak ditemukan.');return}
+
+  const title=edit?'Edit Tujuan Tabungan':'Tambah Tujuan';
+  const name=edit?edit.name:'';
+  const target=edit?edit.target:'';
+  const saved=edit?edit.saved:0;
+
+  openModal(title,`
+  <form onsubmit="
+    event.preventDefault();
+    const name=document.getElementById('gn').value.trim();
+    const target=Number(document.getElementById('gt').value);
+    const saved=Number(document.getElementById('gs').value||0);
+    if(!name){alert('Nama tujuan wajib diisi.');return;}
+    if(!target || target<=0){alert('Target harus lebih dari 0.');return;}
+    if(saved<0){alert('Jumlah terkumpul tidak boleh negatif.');return;}
+    if(saved>target && !confirm('Jumlah terkumpul lebih besar dari target. Tetap simpan?'))return;
+
+    if(${edit?'true':'false'}){
+      const i=db.goals.findIndex(x=>x.id===${edit?edit.id:'null'});
+      if(i>=0) db.goals[i]={...db.goals[i],name:name,target:target,saved:saved};
+    }else{
+      db.goals.push({id:uid(),name:name,target:target,saved:saved});
+    }
+    save();
+    closeModal();
+  ">
+    <div class="field"><label>Nama tujuan</label><input id="gn" value="${escapeHtml(name)}" placeholder="Dana darurat" required></div>
+    <div class="field"><label>Target</label><input id="gt" type="number" min="1" value="${target}" required></div>
+    <div class="field"><label>Sudah terkumpul</label><input id="gs" type="number" min="0" value="${saved}"></div>
+    <button class="primary" style="width:100%">${edit?'Simpan Perubahan':'Simpan'}</button>
+  </form>`)
+}
+
+function delGoal(i){
+  if(confirm('Hapus tujuan tabungan ini?')){
+    db.goals=db.goals.filter(x=>x.id!==i);
+    save();
+  }
+}
 
 function openWallet(){
   openModal('Dompet',`${db.wallets.map(w=>`<div class="tx"><div class="row"><b>${escapeHtml(w.name)}</b><b>${rupiah(walletBalance(w.id))}</b></div></div>`).join('')}<div class="actions"><button class="ghost" onclick="openTransfer()">🔄 Transfer</button><button class="ghost" onclick="closeModal()">Tutup</button></div><form onsubmit="event.preventDefault();db.wallets.push({id:uid(),name:wn.value.trim()});save();closeModal()"><div class="field"><label>Tambah dompet</label><input id="wn" placeholder="Bank / E-wallet" required></div><button class="primary" style="width:100%">Tambah</button></form>`)
