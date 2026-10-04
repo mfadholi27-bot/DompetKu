@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#111827">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="DompetKu">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>DompetKu</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:#f3f4f6;color:#111827;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",Arial,sans-serif}
+button{font:inherit}.app{max-width:520px;margin:auto;padding:18px 16px 105px}
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}
+.title{font-size:28px;font-weight:800}.subtitle,.muted{color:#6b7280;font-size:13px}
+.icon{width:42px;height:42px;border:0;border-radius:50%;background:#fff;font-size:20px}
+.card{background:#fff;border-radius:22px;padding:18px;margin-bottom:14px;box-shadow:0 3px 15px #0000000a}
+.balance-label{color:#6b7280;font-size:13px}.balance{font-size:34px;font-weight:800;margin:7px 0 18px}
+.stats,.wallet-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.stat,.wallet{background:#f8fafc;border-radius:15px;padding:13px}
+.stat-label,.wallet-name{color:#6b7280;font-size:12px}.stat-value,.wallet-value{margin-top:5px;font-weight:750;font-size:15px}
+.income{color:#15803d}.expense{color:#dc2626}.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.action{border:0;border-radius:16px;padding:15px 10px;font-weight:750}.action-income{background:#dcfce7;color:#166534}.action-expense{background:#fee2e2;color:#991b1b}
+.section-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.section-title h2{margin:0;font-size:18px}
+.small-button,.tx-button{border:0;background:#f3f4f6;border-radius:10px;padding:7px 10px;font-weight:700}
+.budget{margin-bottom:13px}.budget-top{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px}
+.progress{width:100%;height:9px;background:#e5e7eb;border-radius:20px;overflow:hidden}.progress-bar{height:100%;background:#111827;border-radius:20px}
+.transaction{display:flex;justify-content:space-between;gap:8px;padding:13px 0;border-bottom:1px solid #eee}.transaction:last-child{border:0}
+.tx-name{font-weight:650}.tx-detail{color:#6b7280;font-size:12px;margin-top:4px}.tx-actions{margin-top:5px}.tx-button{padding:4px 7px;margin-right:3px}.empty{text-align:center;color:#9ca3af;padding:25px 5px}
+.modal{display:none;position:fixed;inset:0;background:#0008;z-index:100;align-items:flex-end;justify-content:center}
+.sheet{width:100%;max-width:520px;background:#fff;border-radius:25px 25px 0 0;padding:20px 16px 28px;max-height:92vh;overflow:auto}.sheet h2{margin:0 0 15px}
+.amount{background:#f3f4f6;border-radius:18px;padding:15px;text-align:right;font-size:34px;font-weight:800;margin-bottom:12px;overflow:hidden}
+.keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.key{height:54px;border:0;border-radius:15px;background:#eef0f3;font-size:21px;font-weight:700}.key:active{transform:scale(.96)}.key-wide{grid-column:span 2}
+label{display:block;color:#6b7280;font-size:13px;margin:12px 0 5px}select,input{width:100%;border:1px solid #d1d5db;border-radius:12px;padding:13px;background:#fff;font-size:16px}
+.save,.cancel{width:100%;border:0;padding:14px;border-radius:14px;font-weight:750;margin-top:15px}.save{background:#111827;color:#fff}.cancel{background:#f3f4f6}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;max-width:520px;margin:auto;background:#fff;border-top:1px solid #e5e7eb;display:grid;grid-template-columns:repeat(4,1fr);padding:9px 5px calc(9px + env(safe-area-inset-bottom));z-index:50}
+.nav{border:0;background:transparent;color:#6b7280;font-size:11px;padding:5px}.nav span{display:block;font-size:21px;margin-bottom:2px}.nav.active{color:#111827;font-weight:700}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header"><div><div class="title">DompetKu</div><div class="subtitle">Keuangan pribadi • offline</div></div><button class="icon" onclick="showData()">⚙️</button></div>
+  <div class="card"><div class="balance-label">Total Saldo</div><div class="balance" id="saldo">Rp0</div>
+    <div class="stats"><div class="stat"><div class="stat-label">Pemasukan</div><div class="stat-value income" id="pemasukan">Rp0</div></div><div class="stat"><div class="stat-label">Pengeluaran</div><div class="stat-value expense" id="pengeluaran">Rp0</div></div></div>
+  </div>
+  <div class="actions"><button class="action action-income" onclick="openTransaction('Pemasukan')">＋ Pemasukan</button><button class="action action-expense" onclick="openTransaction('Pengeluaran')">− Pengeluaran</button></div>
+  <div class="card"><div class="section-title"><h2>Dompet Saya</h2><button class="small-button" onclick="addWallet()">＋</button></div><div class="wallet-grid" id="walletList"></div></div>
+  <div class="card"><div class="section-title"><h2>Anggaran Bulan Ini</h2><button class="small-button" onclick="addBudget()">＋</button></div><div id="budgetList"></div></div>
+  <div class="card"><div class="section-title"><h2>Transaksi Terakhir</h2><span class="subtitle" id="jumlahTransaksi">0 transaksi</span></div><div id="transactionList"></div></div>
+</div>
+<div class="bottom-nav"><button class="nav active"><span>⌂</span>Beranda</button><button class="nav" onclick="openTransaction('Pengeluaran')"><span>＋</span>Transaksi</button><button class="nav" onclick="addBudget()"><span>🎯</span>Anggaran</button><button class="nav" onclick="showData()"><span>⚙️</span>Data</button></div>
+<div class="modal" id="modal"><div class="sheet">
+<h2 id="modalTitle">Pemasukan</h2><div class="amount" id="amountDisplay">Rp0</div>
+<div class="keypad">
+<button class="key" onclick="press('1')">1</button><button class="key" onclick="press('2')">2</button><button class="key" onclick="press('3')">3</button>
+<button class="key" onclick="press('4')">4</button><button class="key" onclick="press('5')">5</button><button class="key" onclick="press('6')">6</button>
+<button class="key" onclick="press('7')">7</button><button class="key" onclick="press('8')">8</button><button class="key" onclick="press('9')">9</button>
+<button class="key key-wide" onclick="press('0')">0</button><button class="key" onclick="backspace()">⌫</button></div>
+<label>Kategori</label><select id="category"><option>Makan</option><option>Transportasi</option><option>Tagihan</option><option>Belanja</option><option>Gaji</option><option>Bonus</option><option>Hiburan</option><option>Kesehatan</option><option>Lainnya</option></select>
+<label>Dompet</label><select id="wallet"></select><label>Catatan</label><input id="note" placeholder="Contoh: makan siang">
+<button class="save" onclick="saveTransaction()">Simpan Transaksi</button><button class="cancel" onclick="closeModal()">Batal</button>
+</div></div>
+<script>
+let data=JSON.parse(localStorage.getItem("DOMPETKU_DATA")||"null")||{transactions:[],wallets:[{name:"Cash"}],budgets:[]};
+let transactionType="Pemasukan",amountString="",editIndex=null;
+const rupiah=n=>new Intl.NumberFormat("id-ID",{style:"currency",currency:"IDR",maximumFractionDigits:0}).format(n);
+const saveData=()=>localStorage.setItem("DOMPETKU_DATA",JSON.stringify(data));
+function press(n){if(amountString.length<12){amountString+=n;updateAmount()}}
+function backspace(){amountString=amountString.slice(0,-1);updateAmount()}
+function updateAmount(){document.getElementById("amountDisplay").textContent=rupiah(Number(amountString||0))}
+function loadWalletSelect(){let s=document.getElementById("wallet");s.innerHTML="";data.wallets.forEach(w=>{let o=document.createElement("option");o.value=w.name;o.textContent=w.name;s.appendChild(o)})}
+function openTransaction(type,index=null){
+ transactionType=type;editIndex=index;amountString="";
+ document.getElementById("modalTitle").textContent=index===null?type:"Edit "+type;
+ loadWalletSelect();
+ if(index!==null){let t=data.transactions[index];amountString=String(t.amount);document.getElementById("category").value=t.category;document.getElementById("wallet").value=t.wallet;document.getElementById("note").value=t.note||""}
+ else{document.getElementById("note").value=""}
+ updateAmount();document.getElementById("modal").style.display="flex";
+}
+function closeModal(){document.getElementById("modal").style.display="none"}
+function saveTransaction(){
+ let amount=Number(amountString);if(!amount){alert("Masukkan nominal terlebih dahulu.");return}
+ let t={type:transactionType,amount,category:document.getElementById("category").value,wallet:document.getElementById("wallet").value,note:document.getElementById("note").value.trim(),date:new Date().toLocaleDateString("id-ID"),month:new Date().toISOString().slice(0,7)};
+ if(editIndex===null)data.transactions.push(t);else data.transactions[editIndex]=t;
+ saveData();closeModal();render();
+}
+function deleteTransaction(i){if(confirm("Hapus transaksi ini?")){data.transactions.splice(i,1);saveData();render()}}
+function render(){
+ let income=data.transactions.filter(t=>t.type==="Pemasukan").reduce((a,t)=>a+t.amount,0),expense=data.transactions.filter(t=>t.type==="Pengeluaran").reduce((a,t)=>a+t.amount,0);
+ saldo.textContent=rupiah(income-expense);pemasukan.textContent=rupiah(income);pengeluaran.textContent=rupiah(expense);jumlahTransaksi.textContent=data.transactions.length+" transaksi";
+ walletList.innerHTML=data.wallets.map(w=>{let b=data.transactions.filter(t=>t.wallet===w.name).reduce((a,t)=>a+(t.type==="Pemasukan"?t.amount:-t.amount),0);return `<div class="wallet"><div class="wallet-name">${esc(w.name)}</div><div class="wallet-value">${rupiah(b)}</div></div>`}).join("");
+ let m=new Date().toISOString().slice(0,7);
+ budgetList.innerHTML=data.budgets.length?data.budgets.map(b=>{let used=data.transactions.filter(t=>t.type==="Pengeluaran"&&t.category===b.category&&t.month===m).reduce((a,t)=>a+t.amount,0),p=Math.min(100,b.limit?used/b.limit*100:0);return `<div class="budget"><div class="budget-top"><b>${esc(b.category)}</b><span>${rupiah(used)} / ${rupiah(b.limit)}</span></div><div class="progress"><div class="progress-bar" style="width:${p}%"></div></div></div>`}).join(""):`<div class="empty">Belum ada anggaran.</div>`;
+ if(!data.transactions.length){transactionList.innerHTML=`<div class="empty">Belum ada transaksi.</div>`}else{transactionList.innerHTML=data.transactions.slice().reverse().map((t,r)=>{let i=data.transactions.length-1-r,cl=t.type==="Pemasukan"?"income":"expense",sg=t.type==="Pemasukan"?"+":"-";return `<div class="transaction"><div><div class="tx-name">${esc(t.category)}</div><div class="tx-detail">${esc(t.note||"Tanpa catatan")} · ${esc(t.wallet)} · ${t.date}</div><div class="tx-actions"><button class="tx-button" onclick="openTransaction('${t.type}',${i})">✎ Edit</button><button class="tx-button" onclick="deleteTransaction(${i})">× Hapus</button></div></div><div class="${cl}" style="white-space:nowrap">${sg}${rupiah(t.amount)}</div></div>`}).join("")}
+}
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+function addWallet(){let n=prompt("Nama dompet baru:","Bank");if(!n)return;n=n.trim();if(data.wallets.some(w=>w.name.toLowerCase()===n.toLowerCase()))return alert("Dompet sudah ada.");data.wallets.push({name:n});saveData();render()}
+function addBudget(){let c=prompt("Kategori anggaran:","Makan");if(!c)return;let l=Number(String(prompt("Batas anggaran bulan ini:","1000000")||"").replace(/\D/g,""));if(!l)return;data.budgets.push({category:c.trim(),limit:l});saveData();render()}
+function backup(){let blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="DompetKu_Backup.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
+function showData(){let c=prompt("1 = Backup data\n2 = Hapus semua data\n\nMasukkan angka:");if(c==="1")backup();if(c==="2"&&confirm("Yakin menghapus semua data?")){localStorage.removeItem("DOMPETKU_DATA");location.reload()}}
+loadWalletSelect();render();
+if("serviceWorker" in navigator)navigator.serviceWorker.register("./sw.js").catch(()=>{});
+</script>
+</body>
+</html>
