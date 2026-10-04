@@ -176,7 +176,9 @@ function show(id,btn){
   btn.classList.add('active');renderAll()
 }
 function openModal(t,b){document.getElementById('modalTitle').textContent=t;document.getElementById('modalBody').innerHTML=b;document.getElementById('modal').classList.add('show')}
-function closeModal(){document.getElementById('modal').classList.remove('show')}
+function closeModal(){if(document.activeElement&&typeof document.activeElement.blur==='function')document.activeElement.blur();document.getElementById('modal').classList.remove('show')}
+let _lastSubmitAt=0;
+document.addEventListener('submit',function(e){const now=Date.now();if(now-_lastSubmitAt<900){e.preventDefault();e.stopImmediatePropagation();return} _lastSubmitAt=now;},true);
 
 function openTx(type,edit=null){
   let x=edit||{date:new Date().toISOString().slice(0,10),amount:'',category:type==='income'?'Gaji':'Makanan',wallet:db.wallets[0]?.id||1,note:''};
@@ -204,7 +206,7 @@ function delTx(i){if(confirm('Hapus transaksi ini?')){db.transactions=db.transac
 function populateTransactionFilters(){
  const c=document.getElementById('filterCategory'),w=document.getElementById('filterWallet'); if(!c||!w)return;
  const oc=c.value||'all',ow=w.value||'all';
- c.innerHTML='<option value="all">Semua kategori</option>'+DK25.getCategories().map(x=>`<option value="${escapeHtml(x)}">${escapeHtml(x)}</option>`).join('');
+ c.innerHTML='<option value="all">Semua kategori</option>'+getCategories().map(x=>`<option value="${escapeHtml(x)}">${escapeHtml(x)}</option>`).join('');
  w.innerHTML='<option value="all">Semua dompet</option>'+db.wallets.map(x=>`<option value="${x.id}">${escapeHtml(x.name)}</option>`).join('');
  if([...c.options].some(o=>o.value===oc))c.value=oc;if([...w.options].some(o=>o.value===ow))w.value=ow;
 }
@@ -227,7 +229,7 @@ function renderHome(){
   statusText.textContent=st[0];statusNote.textContent=st[1];statusPill.textContent=st[2];
   budgetSummary.innerHTML=db.budgets.length?db.budgets.slice(0,3).map(b=>{const u=categoryTotal(b.category),p=Math.min(100,u/b.amount*100);return `<div class="card"><div class="row"><b>${escapeHtml(b.category)}</b><span>${rupiah(u)} / ${rupiah(b.amount)}</span></div><div class="progress"><div class="bar ${p>=100?'danger':p>=70?'warn':''}" style="width:${p}%"></div></div></div>`}).join(''):'<div class="card empty">Belum ada anggaran kategori.</div>';
   const r=[...db.transactions].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5);
-  recent.innerHTML=r.length?r.map(x=>`<div class="tx"><div class="row"><span><b>${escapeHtml(normalizeCategory(x.category))}</b><br><small class="muted">${x.date}</small></span><b class="${x.type==='income'?'green':'red'}">${x.type==='income'?'+':'−'}${rupiah(x.amount)}</b></div></div>`).join(''):'<div class="empty">Belum ada transaksi.</div>'
+  recent.innerHTML=r.length?r.map(x=>`<div class="tx"><div class="row"><span><b>${escapeHtml(normalizeCategory(x.category))}</b><br><small class="muted">${x.date}</small></span><div style="text-align:right"><b class="${x.type==='income'?'green':'red'}">${x.type==='income'?'+':'−'}${rupiah(x.amount)}</b><div style="margin-top:6px"><button class="mini ghost" onclick='openTx("${x.type}",${JSON.stringify(x).replace(/</g,"\u003c").replace(/'/g,"&#39;")})'>Edit</button> <button class="mini dangerBtn" onclick="delTx(${x.id})">Hapus</button></div></div></div></div>`).join(''):'<div class="empty">Belum ada transaksi.</div>'
 }
 
 function renderBudgets(){
