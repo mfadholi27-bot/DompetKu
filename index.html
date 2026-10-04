@@ -32,6 +32,7 @@ input,select{width:100%;padding:12px;border:1px solid var(--line);border-radius:
 .cat-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #eee}
 .cat-add{display:flex;gap:8px;margin-top:12px}.cat-add input{margin-top:0}
 hr{border:0;border-top:1px solid var(--line);margin:14px 0}
+.filter-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.filter-grid .full{grid-column:1/-1}.small-note{font-size:12px;color:var(--muted)}.badge-ok{background:#dcfce7;color:#166534}.badge-warn{background:#fef3c7;color:#92400e}.badge-danger{background:#fee2e2;color:#991b1b}
 </style>
 </head>
 <body>
@@ -47,13 +48,23 @@ hr{border:0;border-top:1px solid var(--line);margin:14px 0}
 <div class="section-title">Transaksi terbaru</div><div class="card" id="recent"></div>
 </section>
 
-<section id="transactions" class="screen"><div class="section-title">Semua transaksi</div><div class="card"><input id="search" placeholder="Cari transaksi..." oninput="renderTransactions()"></div><div class="card" id="txList"></div></section>
+<section id="transactions" class="screen">
+<div class="section-title">Semua transaksi</div>
+<div class="card"><div class="filter-grid">
+<input id="search" class="full" placeholder="Cari kategori, catatan..." oninput="renderTransactions()">
+<select id="filterType" onchange="renderTransactions()"><option value="all">Semua jenis</option><option value="income">Pemasukan</option><option value="expense">Pengeluaran</option></select>
+<select id="filterCategory" onchange="renderTransactions()"><option value="all">Semua kategori</option></select>
+<select id="filterWallet" onchange="renderTransactions()"><option value="all">Semua dompet</option></select>
+<input id="filterMonth" type="month" onchange="renderTransactions()">
+</div><button class="ghost" style="width:100%;margin-top:8px" onclick="clearTxFilters()">↺ Reset filter</button></div>
+<div class="card" id="txList"></div>
+</section>
 
 <section id="budgets" class="screen"><div class="section-title">Anggaran & tujuan</div><button class="primary" onclick="openBudget()">＋ Tambah anggaran</button><div id="budgetList"></div><div class="section-title">Target tabungan</div><button class="ghost" onclick="openGoal()">＋ Tambah tujuan</button><div id="goalList"></div></section>
 
 <section id="more" class="screen"><div class="section-title">Keuangan lainnya</div><div class="grid"><button class="ghost" onclick="openWallet()">👛 Dompet</button><button class="ghost" onclick="openBill()">📅 Tagihan</button><button class="ghost" onclick="openDebt('debt')">🤝 Utang</button><button class="ghost" onclick="openDebt('receivable')">💵 Piutang</button></div>
 <div class="section-title">Laporan singkat</div><div class="card" id="report"></div>
-<div class="section-title">Data</div><div class="grid"><button class="ghost" onclick="backup()">💾 Backup</button><button class="ghost" onclick="document.getElementById('restoreFile').click()">♻️ Restore</button></div><button class="dangerBtn" style="width:100%;margin-top:10px" onclick="resetData()">🗑️ Reset Semua Data</button><div class="muted" style="font-size:12px;margin-top:7px">Gunakan hanya jika ingin memulai DompetKu dari awal. Data tidak dapat dikembalikan kecuali ada backup.</div><input id="restoreFile" type="file" accept=".json,application/json" hidden onchange="restore(event)"></section>
+<div class="section-title">Data</div><div class="grid"><button class="ghost" onclick="backup()">💾 Backup</button><button class="ghost" onclick="document.getElementById('restoreFile').click()">♻️ Restore</button><button class="ghost" onclick="exportCsv()">📄 Export CSV</button><button class="ghost" onclick="openMonthlyReport()">📊 Laporan Bulanan</button></div><button class="dangerBtn" style="width:100%;margin-top:10px" onclick="resetData()">🗑️ Reset Semua Data</button><div class="muted" style="font-size:12px;margin-top:7px">Gunakan hanya jika ingin memulai DompetKu dari awal. Data tidak dapat dikembalikan kecuali ada backup.</div><input id="restoreFile" type="file" accept=".json,application/json" hidden onchange="restore(event)"></section>
 </div>
 
 <nav class="nav"><button class="active" onclick="show('home',this)">🏠<br>Beranda</button><button onclick="show('transactions',this)">🧾<br>Transaksi</button><button onclick="show('budgets',this)">📊<br>Anggaran</button><button onclick="show('more',this)">⚙️<br>Lainnya</button></nav>
@@ -190,12 +201,23 @@ function submitTx(e,type,editId){
 
 function delTx(i){if(confirm('Hapus transaksi ini?')){db.transactions=db.transactions.filter(x=>x.id!==i);save()}}
 
-function renderTransactions(){
-  const q=(document.getElementById('search')?.value||'').toLowerCase();
-  const a=[...db.transactions].filter(x=>(normalizeCategory(x.category)+' '+(x.note||'')).toLowerCase().includes(q)).sort((a,b)=>b.date.localeCompare(a.date));
-  document.getElementById('txList').innerHTML=a.length?a.map(x=>`<div class="tx"><div class="row"><div><div class="tx-title">${escapeHtml(normalizeCategory(x.category))}</div><div class="tx-meta">${x.date} • ${escapeHtml(db.wallets.find(w=>w.id==x.wallet)?.name||'Dompet')}${x.note?' • '+escapeHtml(x.note):''}</div></div><div class="${x.type==='income'?'green':'red'}"><b>${x.type==='income'?'+':'−'}${rupiah(x.amount)}</b><br><button class="mini ghost" onclick='openTx("${x.type}",${JSON.stringify(x).replace(/"/g,'&quot;')})'>Edit</button> <button class="mini dangerBtn" onclick="delTx(${x.id})">Hapus</button></div></div></div>`).join(''):'<div class="empty">Belum ada transaksi.</div>'
+function populateTransactionFilters(){
+ const c=document.getElementById('filterCategory'),w=document.getElementById('filterWallet'); if(!c||!w)return;
+ const oc=c.value||'all',ow=w.value||'all';
+ c.innerHTML='<option value="all">Semua kategori</option>'+DK25.getCategories().map(x=>`<option value="${escapeHtml(x)}">${escapeHtml(x)}</option>`).join('');
+ w.innerHTML='<option value="all">Semua dompet</option>'+db.wallets.map(x=>`<option value="${x.id}">${escapeHtml(x.name)}</option>`).join('');
+ if([...c.options].some(o=>o.value===oc))c.value=oc;if([...w.options].some(o=>o.value===ow))w.value=ow;
 }
-
+function clearTxFilters(){['search','filterMonth'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});['filterType','filterCategory','filterWallet'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='all'});renderTransactions()}
+function renderTransactions(){
+ populateTransactionFilters();
+ const q=(document.getElementById('search')?.value||'').toLowerCase().trim(),type=document.getElementById('filterType')?.value||'all',cat=document.getElementById('filterCategory')?.value||'all',wallet=document.getElementById('filterWallet')?.value||'all',month=document.getElementById('filterMonth')?.value||'';
+ let a=[...db.transactions].filter(x=>{
+  const c=normalizeCategory(x.category),text=(c+' '+(x.note||'')).toLowerCase();
+  return (!q||text.includes(q))&&(type==='all'||x.type===type)&&(cat==='all'||c.toLowerCase()===cat.toLowerCase())&&(wallet==='all'||String(x.wallet)===String(wallet))&&(!month||monthKey(x.date)===month);
+ }).sort((a,b)=>String(b.date).localeCompare(String(a.date))||Number(b.id)-Number(a.id));
+ txList.innerHTML=a.length?a.map(x=>`<div class="tx"><div class="row"><div><div class="tx-title">${escapeHtml(normalizeCategory(x.category))}</div><div class="tx-meta">${escapeHtml(x.date)} • ${escapeHtml(db.wallets.find(w=>w.id==x.wallet)?.name||'Dompet')}${x.note?' • '+escapeHtml(x.note):''}</div></div><div class="${x.type==='income'?'green':'red'}"><b>${x.type==='income'?'+':'−'}${rupiah(x.amount)}</b><br><button class="mini ghost" onclick='openTx("${x.type}",${JSON.stringify(x).replace(/</g,"\u003c").replace(/'/g,"&#39;")})'>Edit</button> <button class="mini dangerBtn" onclick="delTx(${x.id})">Hapus</button></div></div></div>`).join(''):'<div class="empty">Tidak ada transaksi yang sesuai filter.</div>'
+}
 function renderHome(){
   const inc=total('income'),exp=total('expense'),bud=db.settings.monthlyBudget||0,me=monthTotal('expense');
   balance.textContent=rupiah(inc-exp);income.textContent=rupiah(inc);expense.textContent=rupiah(exp);monthExpense.textContent=rupiah(me);monthBudget.textContent=bud?rupiah(bud):'Belum diatur';
@@ -320,18 +342,34 @@ function delGoal(i){
 }
 
 function openWallet(){
-  openModal('Dompet',`${db.wallets.map(w=>`<div class="tx"><div class="row"><b>${escapeHtml(w.name)}</b><b>${rupiah(walletBalance(w.id))}</b></div></div>`).join('')}<div class="actions"><button class="ghost" onclick="openTransfer()">🔄 Transfer</button><button class="ghost" onclick="closeModal()">Tutup</button></div><form onsubmit="event.preventDefault();db.wallets.push({id:uid(),name:wn.value.trim()});save();closeModal()"><div class="field"><label>Tambah dompet</label><input id="wn" placeholder="Bank / E-wallet" required></div><button class="primary" style="width:100%">Tambah</button></form>`)
+ const list=db.wallets.map(w=>`<div class="tx"><div class="row"><div><b>${escapeHtml(w.name)}</b><div class="tx-meta">Saldo ${rupiah(walletBalance(w.id))}</div></div><div><button class="mini ghost" onclick="editWallet(${w.id})">Edit</button> ${db.wallets.length>1?`<button class="mini dangerBtn" onclick="deleteWallet(${w.id})">Hapus</button>`:''}</div></div></div>`).join('');
+ const hist=[...db.transfers].sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,30).map(t=>{const f=db.wallets.find(w=>+w.id===+t.from),to=db.wallets.find(w=>+w.id===+t.to);return `<div class="tx"><div class="row"><div><b>🔄 ${escapeHtml(f?.name||'Dompet')} → ${escapeHtml(to?.name||'Dompet')}</b><div class="tx-meta">${escapeHtml(t.date)}${t.note?' • '+escapeHtml(t.note):''}</div></div><div><b>${rupiah(t.amount)}</b><br><button class="mini dangerBtn" onclick="deleteTransfer(${t.id})">Hapus</button></div></div></div>`}).join('')||'<div class="empty">Belum ada transfer.</div>';
+ openModal('Dompet',`${list||'<div class="empty">Belum ada dompet.</div>'}<div class="actions" style="margin-top:10px"><button class="ghost" onclick="openTransfer()">🔄 Transfer</button><button class="ghost" onclick="addWallet()">＋ Dompet</button></div><hr><b>📜 Riwayat transfer</b><div style="margin-top:6px">${hist}</div>`);
 }
-
+function addWallet(){openModal('Tambah Dompet',`<form onsubmit="event.preventDefault();const n=document.getElementById('wn').value.trim();if(!n)return;if(db.wallets.some(w=>w.name.toLowerCase()===n.toLowerCase())){alert('Nama dompet sudah ada.');return}db.wallets.push({id:uid(),name:n});save();closeModal()}"><div class="field"><label>Nama dompet</label><input id="wn" placeholder="Bank BRI / DANA / Cash" required></div><button class="primary" style="width:100%">Tambah</button></form>`)}
+function editWallet(id){const w=db.wallets.find(x=>+x.id===+id);if(!w)return;openModal('Edit Dompet',`<form onsubmit="event.preventDefault();const n=document.getElementById('wn').value.trim();if(!n)return;w.name=n;save();closeModal()"><div class="field"><label>Nama dompet</label><input id="wn" value="${escapeHtml(w.name)}" required></div><button class="primary" style="width:100%">Simpan</button></form>`)}
+function deleteWallet(id){if(db.wallets.length<=1){alert('Minimal harus ada satu dompet.');return}if(db.transactions.some(x=>+x.wallet===+id)||db.transfers.some(x=>+x.from===+id||+x.to===+id)){alert('Dompet masih digunakan oleh transaksi/transfer.');return}if(confirm('Hapus dompet ini?')){db.wallets=db.wallets.filter(x=>+x.id!==+id);save();closeModal()}}
+function deleteTransfer(id){if(confirm('Hapus transfer ini? Saldo akan dihitung ulang.')){db.transfers=db.transfers.filter(x=>+x.id!==+id);save();closeModal();openWallet()}}
 function openTransfer(){
   if(db.wallets.length<2){alert('Tambahkan minimal 2 dompet terlebih dahulu.');return}
   openModal('Transfer Antar Dompet',`<form onsubmit="event.preventDefault();let a=Number(tf.value),from=Number(tfrom.value),to=Number(tto.value);if(from===to){alert('Dompet asal dan tujuan harus berbeda.');return}if(a<=0){alert('Nominal harus lebih dari 0.');return}if(walletBalance(from)<a){alert('Saldo dompet asal tidak cukup.');return}db.transfers.push({id:uid(),amount:a,from,to,date:td.value,note:tn.value.trim()});save();closeModal()"><div class="field"><label>Nominal</label><input id="tf" type="number" min="1" required></div><div class="field"><label>Dari dompet</label><select id="tfrom">${db.wallets.map(w=>`<option value="${w.id}">${escapeHtml(w.name)} — ${rupiah(walletBalance(w.id))}</option>`).join('')}</select></div><div class="field"><label>Ke dompet</label><select id="tto">${db.wallets.map((w,i)=>`<option value="${w.id}" ${i===1?'selected':''}>${escapeHtml(w.name)}</option>`).join('')}</select></div><div class="field"><label>Tanggal</label><input id="td" type="date" value="${new Date().toISOString().slice(0,10)}" required></div><div class="field"><label>Catatan</label><input id="tn" placeholder="Opsional"></div><button class="primary" style="width:100%">Transfer</button></form>`)
 }
 
-function openBill(){openModal('Tagihan',`${db.bills.map(b=>`<div class="card"><div class="row"><b>${escapeHtml(b.name)}</b><span>${rupiah(b.amount)}</span></div><small class="muted">Jatuh tempo tanggal ${b.day}</small></div>`).join('')||'<div class="empty">Belum ada tagihan.</div>'}<form onsubmit="event.preventDefault();db.bills.push({id:uid(),name:bn.value.trim(),amount:Number(bm.value),day:Number(bd.value)});save();closeModal()"><div class="field"><label>Nama</label><input id="bn" required></div><div class="field"><label>Nominal</label><input id="bm" type="number" required></div><div class="field"><label>Tanggal jatuh tempo</label><input id="bd" type="number" min="1" max="31" required></div><button class="primary" style="width:100%">Tambah</button></form>`)}
-
-function openDebt(type){openModal(type==='debt'?'Utang':'Piutang',`<form onsubmit="event.preventDefault();db.debts.push({id:uid(),type,name:dn.value.trim(),amount:Number(da.value),note:di.value});save();closeModal()"><div class="field"><label>Nama</label><input id="dn" required></div><div class="field"><label>Nominal</label><input id="da" type="number" required></div><div class="field"><label>Catatan</label><input id="di"></div><button class="primary" style="width:100%">Simpan</button></form><div class="section-title">Daftar</div>${db.debts.filter(x=>x.type===type).map(x=>`<div class="tx"><div class="row"><b>${escapeHtml(x.name)}</b><b>${rupiah(x.amount)}</b></div></div>`).join('')||'<div class="empty">Belum ada.</div>'}`)}
-
+function openBill(){
+ const list=db.bills.map(b=>`<div class="card"><div class="row"><div><b>${escapeHtml(b.name)}</b><div class="tx-meta">Jatuh tempo tanggal ${b.day}</div></div><div><b>${rupiah(b.amount)}</b><br><span class="pill ${b.paid?'badge-ok':'badge-warn'}">${b.paid?'SUDAH DIBAYAR':'BELUM DIBAYAR'}</span></div></div><div class="actions" style="margin-top:8px"><button class="mini ghost" onclick="toggleBill(${b.id})">${b.paid?'Belum dibayar':'Tandai dibayar'}</button><button class="mini ghost" onclick="editBill(${b.id})">Edit</button><button class="mini dangerBtn" onclick="deleteBill(${b.id})">Hapus</button></div></div>`).join('')||'<div class="empty">Belum ada tagihan.</div>';
+ openModal('Tagihan',`${list}<hr><form onsubmit="event.preventDefault();const n=bn.value.trim(),a=Number(bm.value),d=Number(bd.value);if(!n||a<=0||d<1||d>31){alert('Periksa data tagihan.');return}db.bills.push({id:uid(),name:n,amount:a,day:d,paid:false});save();closeModal()"><div class="field"><label>Nama</label><input id="bn" placeholder="Listrik" required></div><div class="field"><label>Nominal</label><input id="bm" type="number" min="1" required></div><div class="field"><label>Tanggal jatuh tempo</label><input id="bd" type="number" min="1" max="31" required></div><button class="primary" style="width:100%">Tambah</button></form>`)
+}
+function toggleBill(id){const b=db.bills.find(x=>+x.id===+id);if(!b)return;b.paid=!b.paid;save();closeModal();openBill()}
+function editBill(id){const b=db.bills.find(x=>+x.id===+id);if(!b)return;openModal('Edit Tagihan',`<form onsubmit="event.preventDefault();b.name=bn.value.trim();b.amount=Number(bm.value);b.day=Number(bd.value);save();closeModal();openBill()"><div class="field"><label>Nama</label><input id="bn" value="${escapeHtml(b.name)}" required></div><div class="field"><label>Nominal</label><input id="bm" type="number" min="1" value="${b.amount}" required></div><div class="field"><label>Tanggal</label><input id="bd" type="number" min="1" max="31" value="${b.day}" required></div><button class="primary" style="width:100%">Simpan Perubahan</button></form>`)}
+function deleteBill(id){if(confirm('Hapus tagihan ini?')){db.bills=db.bills.filter(x=>+x.id!==+id);save();closeModal();openBill()}}
+function openDebt(type){
+ const title=type==='debt'?'Utang':'Piutang';
+ const list=db.debts.filter(x=>x.type===type).map(x=>`<div class="card"><div class="row"><div><b>${escapeHtml(x.name)}</b><div class="tx-meta">${x.note?escapeHtml(x.note):'Tanpa catatan'}</div></div><div><b>${rupiah(x.amount)}</b><br><span class="pill ${x.paid?'badge-ok':'badge-warn'}">${x.paid?'LUNAS':'BELUM LUNAS'}</span></div></div><div class="actions" style="margin-top:8px"><button class="mini ghost" onclick="toggleDebt(${x.id})">${x.paid?'Belum lunas':'Tandai lunas'}</button><button class="mini ghost" onclick="editDebt(${x.id})">Edit</button><button class="mini dangerBtn" onclick="deleteDebt(${x.id})">Hapus</button></div></div>`).join('')||'<div class="empty">Belum ada.</div>';
+ openModal(title,`${list}<hr><form onsubmit="event.preventDefault();const n=dn.value.trim(),a=Number(da.value);if(!n||a<=0){alert('Periksa data.');return}db.debts.push({id:uid(),type:'${type}',name:n,amount:a,note:di.value.trim(),paid:false});save();closeModal();openDebt('${type}')"><div class="field"><label>Nama</label><input id="dn" required></div><div class="field"><label>Nominal</label><input id="da" type="number" min="1" required></div><div class="field"><label>Catatan</label><input id="di"></div><button class="primary" style="width:100%">Simpan</button></form>`)
+}
+function toggleDebt(id){const x=db.debts.find(d=>+d.id===+id);if(!x)return;x.paid=!x.paid;save();closeModal();openDebt(x.type)}
+function editDebt(id){const x=db.debts.find(d=>+d.id===+id);if(!x)return;openModal('Edit '+(x.type==='debt'?'Utang':'Piutang'),`<form onsubmit="event.preventDefault();x.name=dn.value.trim();x.amount=Number(da.value);x.note=di.value.trim();save();closeModal();openDebt('${x.type}')"><div class="field"><label>Nama</label><input id="dn" value="${escapeHtml(x.name)}" required></div><div class="field"><label>Nominal</label><input id="da" type="number" min="1" value="${x.amount}" required></div><div class="field"><label>Catatan</label><input id="di" value="${escapeHtml(x.note||'')}"></div><button class="primary" style="width:100%">Simpan</button></form>`)}
+function deleteDebt(id){const x=db.debts.find(d=>+d.id===+id);if(x&&confirm('Hapus data ini?')){db.debts=db.debts.filter(d=>+d.id!==+id);save();closeModal();openDebt(x.type)}}
 function openSettings(){
   openModal('Pengaturan',`
     <div class="card">
@@ -368,6 +406,24 @@ function addCategory(){
 function deleteCategory(c){
   if(getCategories().length<=1){alert('Minimal harus ada satu kategori.');return}
   if(confirm('Hapus kategori '+c+'?')){saveCategories(getCategories().filter(x=>x!==c));renderCategoryManager()}
+}
+
+function exportCsv(){
+ const rows=[['Tanggal','Jenis','Kategori','Dompet','Nominal','Catatan']];
+ [...db.transactions].sort((a,b)=>String(a.date).localeCompare(String(b.date))).forEach(x=>rows.push([x.date,x.type==='income'?'Pemasukan':'Pengeluaran',normalizeCategory(x.category),db.wallets.find(w=>+w.id===+x.wallet)?.name||'Dompet',x.amount,x.note||'']));
+ const csv='\ufeff'+rows.map(r=>r.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(',')).join('\r\n');
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='DompetKu_Transaksi_'+new Date().toISOString().slice(0,10)+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)
+}
+function openMonthlyReport(){
+ const m=monthKey(new Date());
+ openModal('Laporan Bulanan',`<div class="field"><label>Bulan</label><input id="reportMonth" type="month" value="${m}" onchange="renderMonthlyReport(this.value)"></div><div id="monthlyReportBody"></div>`);
+ renderMonthlyReport(m)
+}
+function renderMonthlyReport(month){
+ const inc=db.transactions.filter(x=>x.type==='income'&&monthKey(x.date)===month).reduce((s,x)=>s+Number(x.amount),0),exp=db.transactions.filter(x=>x.type==='expense'&&monthKey(x.date)===month).reduce((s,x)=>s+Number(x.amount),0);
+ const cats={};db.transactions.filter(x=>x.type==='expense'&&monthKey(x.date)===month).forEach(x=>{const c=normalizeCategory(x.category);cats[c]=(cats[c]||0)+Number(x.amount)});
+ const top=Object.entries(cats).sort((a,b)=>b[1]-a[1]),total=top.reduce((s,x)=>s+x[1],0);
+ monthlyReportBody.innerHTML=`<div class="card"><div class="row"><span>Pemasukan</span><b class="green">${rupiah(inc)}</b></div><div class="row" style="margin-top:8px"><span>Pengeluaran</span><b class="red">${rupiah(exp)}</b></div><div class="row" style="margin-top:8px"><span>Sisa</span><b>${rupiah(inc-exp)}</b></div></div><div class="card"><b>Pengeluaran per kategori</b>${top.length?top.map(([c,v])=>`<div style="margin-top:10px"><div class="row"><span>${escapeHtml(c)}</span><b>${rupiah(v)}</b></div><div class="progress"><div class="bar" style="width:${total?Math.min(100,v/total*100):0}%"></div></div></div>`).join(''):'<div class="empty">Belum ada pengeluaran bulan ini.</div>'}</div>`
 }
 
 function backup(){
