@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0f766e">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<title>DompetKu v2.8.5</title>
+<title>DompetKu v2.8.6</title>
 <link rel="manifest" href="manifest.webmanifest">
 <style>
 :root{--bg:#f4f7f7;--card:#fff;--text:#172121;--muted:#718080;--primary:#0f766e;--danger:#dc2626;--warn:#d97706;--line:#e5e7eb}
@@ -60,7 +60,7 @@ hr{border:0;border-top:1px solid var(--line);margin:14px 0}
 <div class="card" id="txList"></div>
 </section>
 
-<section id="budgets" class="screen"><div class="section-title">Anggaran & tujuan</div><button class="primary" onclick="openBudget()">＋ Tambah anggaran</button><div id="budgetList"></div><div class="section-title">Target tabungan</div><div class="actions"><button class="ghost" onclick="openGoal()">＋ Tambah tujuan</button><button class="primary" onclick="openSaveMoney()">💰 Tabung</button></div><div id="goalList"></div></section>
+<section id="budgets" class="screen"><div class="section-title">Anggaran & tujuan</div><div class="small-note" style="margin:0 3px 8px">Anggaran bulan baru dapat dibuat otomatis dari rata-rata pemakaian 3 bulan sebelumnya.</div><button class="primary" onclick="openBudget()">＋ Tambah anggaran</button><div id="budgetList"></div><div class="section-title">Target tabungan</div><div class="actions"><button class="ghost" onclick="openGoal()">＋ Tambah tujuan</button><button class="primary" onclick="openSaveMoney()">💰 Tabung</button></div><div id="goalList"></div></section>
 
 <section id="more" class="screen"><div class="section-title">Keuangan lainnya</div><div class="grid"><button class="ghost" onclick="openWallet()">👛 Dompet</button><button class="ghost" onclick="openBill()">📅 Tagihan</button><button class="ghost" onclick="openDebt('debt')">🤝 Utang</button><button class="ghost" onclick="openDebt('receivable')">💵 Piutang</button></div>
 <div class="section-title">Laporan singkat</div><div class="card" id="report"></div>
@@ -88,7 +88,7 @@ const CAT_KEY='dompetku_categories_v25';
 
 let db=JSON.parse(localStorage.getItem(KEY)||'null')||{
   transactions:[],budgets:[],wallets:[{id:1,name:'Cash'}],transfers:[],
-  goals:[],goalMoves:[],bills:[],debts:[],debtPayments:[],settings:{monthlyBudget:0}
+  goals:[],goalMoves:[],bills:[],debts:[],debtPayments:[],settings:{monthlyBudget:0,budgetMonth:''}
 };
 
 if(!Array.isArray(db.transactions)) db.transactions=[];
@@ -100,7 +100,8 @@ if(!Array.isArray(db.wallets)||!db.wallets.length) db.wallets=[{id:1,name:'Cash'
 if(!Array.isArray(db.goals)) db.goals=[];
 if(!Array.isArray(db.bills)) db.bills=[];
 if(!Array.isArray(db.debts)) db.debts=[];
-if(!db.settings) db.settings={monthlyBudget:0};
+if(!db.settings) db.settings={monthlyBudget:0,budgetMonth:''};
+if(typeof db.settings.budgetMonth!=='string') db.settings.budgetMonth='';
 
 const rupiah=n=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Number(n)||0);
 const uid=()=>Date.now()+Math.random();
@@ -155,6 +156,72 @@ function migrateCategories(){
   saveCategories(cats);
 }
 migrateCategories();
+
+
+function currentMonthKey(){
+  const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+}
+function priorMonthKeys(count=3){
+  const out=[],d=new Date();
+  d.setDate(1);
+  for(let i=1;i<=count;i++){
+    const x=new Date(d.getFullYear(),d.getMonth()-i,1);
+    out.push(x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0'));
+  }
+  return out;
+}
+function monthExpenseByCategory(month){
+  const totals={};
+  db.transactions.filter(x=>x.type==='expense'&&monthKey(x.date)===month).forEach(x=>{
+    const c=normalizeCategory(x.category);
+    totals[c]=(totals[c]||0)+Number(x.amount);
+  });
+  return totals;
+}
+function roundBudgetAmount(n){
+  n=Number(n)||0;
+  if(n<=0)return 0;
+  return Math.ceil(n/10000)*10000;
+}
+function ensureMonthlyBudgets(){
+  const current=currentMonthKey();
+  // Existing data from before this feature: mark the current budget as the current month
+  // so the first update does not unexpectedly overwrite the user's existing budget.
+  if(!db.settings.budgetMonth){
+    db.settings.budgetMonth=current;
+    localStorage.setItem(KEY,JSON.stringify(db));
+    return;
+  }
+  if(db.settings.budgetMonth===current)return;
+
+  const months=priorMonthKeys(3);
+  const sums={};
+  months.forEach(m=>{
+    const x=monthExpenseByCategory(m);
+    Object.keys(x).forEach(c=>{sums[c]=(sums[c]||0)+x[c]});
+  });
+
+  const generated=[];
+  Object.entries(sums).forEach(([category,total])=>{
+    const avg=total/months.length;
+    const amount=roundBudgetAmount(avg);
+    if(amount>0)generated.push({id:uid(),category,amount});
+  });
+
+  // If there is not enough history yet, keep the previous categories/budget.
+  // Once there is history, the new month uses the rolling 3-month average.
+  if(generated.length){
+    db.budgets=generated;
+    db.settings.monthlyBudget=generated.reduce((s,b)=>s+Number(b.amount),0);
+    db.settings.budgetMonth=current;
+    db.settings.budgetAuto=true;
+    localStorage.setItem(KEY,JSON.stringify(db));
+  }else{
+    db.settings.budgetMonth=current;
+    localStorage.setItem(KEY,JSON.stringify(db));
+  }
+}
 
 function walletBalance(id){
   const t=db.transactions.filter(x=>Number(x.wallet)===Number(id)).reduce((s,x)=>s+(x.type==='income'?Number(x.amount):-Number(x.amount)),0);
@@ -237,7 +304,8 @@ function renderHome(){
 }
 
 function renderBudgets(){
-  budgetList.innerHTML=db.budgets.map(b=>{
+  const autoNote=db.settings.budgetAuto?'<div class="small-note" style="margin:8px 3px">ℹ️ Anggaran bulan ini dibuat otomatis dari rata-rata 3 bulan sebelumnya. Anda tetap bisa Edit.</div>':'';
+  budgetList.innerHTML=autoNote+db.budgets.map(b=>{
     const u=categoryTotal(b.category),p=Math.min(100,u/b.amount*100);
     return `<div class="card">
       <div class="row">
@@ -290,6 +358,8 @@ function openBudget(editId=null){
     }else{
       db.budgets.push({id:uid(),category:cat,amount:amount});
     }
+    db.settings.budgetMonth=currentMonthKey();
+    db.settings.budgetAuto=false;
     save();
     closeModal();
   ">
@@ -302,6 +372,7 @@ function openBudget(editId=null){
 function delBudget(i){
   if(confirm('Hapus anggaran ini?')){
     db.budgets=db.budgets.filter(x=>x.id!==i);
+    db.settings.budgetAuto=false;
     save();
   }
 }
@@ -434,7 +505,7 @@ function openSettings(){
     <div class="card">
       <b>Anggaran pengeluaran bulanan</b>
       <input id="mb" type="number" value="${db.settings.monthlyBudget||''}" placeholder="Contoh 3500000">
-      <button class="primary" style="width:100%;margin-top:8px" onclick="db.settings.monthlyBudget=Number(mb.value);save();closeModal()">Simpan</button>
+      <button class="primary" style="width:100%;margin-top:8px" onclick="db.settings.monthlyBudget=Number(mb.value);db.settings.budgetMonth=currentMonthKey();db.settings.budgetAuto=false;save();closeModal()">Simpan</button>
     </div>
     <div class="card">
       <b>🏷️ Kategori</b>
@@ -513,6 +584,7 @@ function renderReport(){
   report.innerHTML=`<div class="row"><span>Pemasukan bulan ini</span><b class="green">${rupiah(inc)}</b></div><div class="row" style="margin-top:10px"><span>Pengeluaran bulan ini</span><b class="red">${rupiah(exp)}</b></div><div class="row" style="margin-top:10px"><span>Sisa bulan ini</span><b>${rupiah(inc-exp)}</b></div><hr><b>Kategori pengeluaran terbesar</b>${top.map(x=>`<div class="row" style="margin-top:8px"><span>${escapeHtml(x[0])}</span><b>${rupiah(x[1])}</b></div>`).join('')||'<div class="muted" style="margin-top:8px">Belum ada data.</div>'}`
 }
 function renderAll(){renderHome();renderTransactions();renderBudgets();renderReport()}
+ensureMonthlyBudgets();
 renderAll();
 </script>
 </body></html>
