@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0f766e">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<title>DompetKu v2.8.7</title>
+<title>DompetKu v2.8.8</title>
 <link rel="manifest" href="manifest.webmanifest">
 <style>
 :root{--bg:#f4f7f7;--card:#fff;--text:#172121;--muted:#718080;--primary:#0f766e;--danger:#dc2626;--warn:#d97706;--line:#e5e7eb}
@@ -102,6 +102,7 @@ if(!Array.isArray(db.bills)) db.bills=[];
 if(!Array.isArray(db.debts)) db.debts=[];
 if(!db.settings) db.settings={monthlyBudget:0,budgetMonth:''};
 if(typeof db.settings.budgetMonth!=='string') db.settings.budgetMonth='';
+if(typeof db.settings.lastSync!=='string') db.settings.lastSync='';
 
 const rupiah=n=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Number(n)||0);
 const uid=()=>Date.now()+Math.random();
@@ -230,9 +231,20 @@ function walletBalance(id){
   const dp=db.debtPayments.reduce((s,x)=>s+(Number(x.wallet)===Number(id)?-Number(x.amount):0),0);
   return t+tr+gm+dp;
 }
+function totalWalletBalance(){return db.wallets.reduce((s,w)=>s+walletBalance(w.id),0)}
 
 const monthKey=d=>new Date(d).toISOString().slice(0,7);
 function save(){localStorage.setItem(KEY,JSON.stringify(db));renderAll()}
+function syncAll(){
+  // Sinkronisasi hanya menghitung ulang tampilan dari data sumber. Tidak menghapus
+  // transaksi dan tidak membuat transaksi baru atau menggandakan pembayaran.
+  db.goals.forEach(g=>{g.saved=Math.max(0,Number(g.saved)||0);g.target=Math.max(0,Number(g.target)||0)});
+  db.debts.forEach(d=>{d.amount=Math.max(0,Number(d.amount)||0);d.paid=d.amount<=0});
+  db.settings.lastSync=new Date().toISOString();
+  localStorage.setItem(KEY,JSON.stringify(db));
+  renderAll();
+  alert('Sinkronisasi selesai. Semua saldo, transaksi, anggaran, tabungan, utang, dan laporan sudah dihitung ulang.');
+}
 function total(type){return db.transactions.filter(x=>x.type===type).reduce((s,x)=>s+Number(x.amount),0)}
 function monthTotal(type){const m=monthKey(new Date());return db.transactions.filter(x=>x.type===type&&monthKey(x.date)===m).reduce((s,x)=>s+Number(x.amount),0)}
 function categoryTotal(cat){
@@ -285,11 +297,23 @@ function clearTxFilters(){['search','filterMonth'].forEach(id=>{const e=document
 function renderTransactions(){
  populateTransactionFilters();
  const q=(document.getElementById('search')?.value||'').toLowerCase().trim(),type=document.getElementById('filterType')?.value||'all',cat=document.getElementById('filterCategory')?.value||'all',wallet=document.getElementById('filterWallet')?.value||'all',month=document.getElementById('filterMonth')?.value||'';
- let a=[...db.transactions].filter(x=>{
+ const normal=[...db.transactions].filter(x=>{
   const c=normalizeCategory(x.category),text=(c+' '+(x.note||'')).toLowerCase();
   return (!q||text.includes(q))&&(type==='all'||x.type===type)&&(cat==='all'||c.toLowerCase()===cat.toLowerCase())&&(wallet==='all'||String(x.wallet)===String(wallet))&&(!month||monthKey(x.date)===month);
- }).sort((a,b)=>String(b.date).localeCompare(String(a.date))||Number(b.id)-Number(a.id));
- txList.innerHTML=a.length?a.map(x=>`<div class="tx"><div class="row"><div><div class="tx-title">${escapeHtml(normalizeCategory(x.category))}</div><div class="tx-meta">${escapeHtml(x.date)} • ${escapeHtml(db.wallets.find(w=>w.id==x.wallet)?.name||'Dompet')}${x.note?' • '+escapeHtml(x.note):''}</div></div><div class="${x.type==='income'?'green':'red'}"><b>${x.type==='income'?'+':'−'}${rupiah(x.amount)}</b><br><button class="mini ghost" onclick='openTx("${x.type}",${JSON.stringify(x).replace(/</g,"\u003c").replace(/'/g,"&#39;")})'>Edit</button> <button class="mini dangerBtn" onclick="delTx(${x.id})">Hapus</button></div></div></div>`).join(''):'<div class="empty">Tidak ada transaksi yang sesuai filter.</div>'
+ }).map(x=>({...x,_kind:'transaction'}));
+ const debtRows=db.debtPayments.map(x=>({
+  ...x,_kind:'debt',type:'debt_payment',category:'💳 Bayar Utang',
+  wallet:Number(x.wallet),date:x.date,note:x.note||'',amount:Number(x.amount),
+  debtName:db.debts.find(d=>Number(d.id)===Number(x.debtId))?.name||'Utang'
+ })).filter(x=>{
+  const text=('bayar utang '+x.debtName+' '+(x.note||'')).toLowerCase();
+  return (!q||text.includes(q))&&(type==='all'||type==='debt_payment')&&(cat==='all')&&(wallet==='all'||String(x.wallet)===String(wallet))&&(!month||monthKey(x.date)===month);
+ });
+ const a=[...normal,...debtRows].sort((a,b)=>String(b.date).localeCompare(String(a.date))||Number(b.id)-Number(a.id));
+ txList.innerHTML=a.length?a.map(x=>{
+   if(x._kind==='debt') return `<div class="tx"><div class="row"><div><div class="tx-title">💳 Bayar Utang — ${escapeHtml(x.debtName)}</div><div class="tx-meta">${escapeHtml(x.date)} • ${escapeHtml(db.wallets.find(w=>Number(w.id)===Number(x.wallet))?.name||'Dompet')}${x.note?' • '+escapeHtml(x.note):''}</div></div><div class="red"><b>−${rupiah(x.amount)}</b><br><span class="tx-meta">Tidak dihitung sebagai pengeluaran</span></div></div></div>`;
+   return `<div class="tx"><div class="row"><div><div class="tx-title">${escapeHtml(normalizeCategory(x.category))}</div><div class="tx-meta">${escapeHtml(x.date)} • ${escapeHtml(db.wallets.find(w=>w.id==x.wallet)?.name||'Dompet')}${x.note?' • '+escapeHtml(x.note):''}</div></div><div class="${x.type==='income'?'green':'red'}"><b>${x.type==='income'?'+':'−'}${rupiah(x.amount)}</b><br><button class="mini ghost" onclick='openTx("${x.type}",${JSON.stringify(x).replace(/</g,"\u003c").replace(/'/g,"&#39;")})'>Edit</button> <button class="mini dangerBtn" onclick="delTx(${x.id})">Hapus</button></div></div></div>`;
+ }).join(''):'<div class="empty">Tidak ada transaksi yang sesuai filter.</div>'
 }
 
 function budgetInfoHtml(used,budget){
@@ -309,7 +333,7 @@ function budgetInfoHtml(used,budget){
 
 function renderHome(){
   const inc=total('income'),exp=total('expense'),bud=db.settings.monthlyBudget||0,me=monthTotal('expense');
-  balance.textContent=rupiah(inc-exp);income.textContent=rupiah(inc);expense.textContent=rupiah(exp);monthExpense.textContent=rupiah(me);monthBudget.textContent=bud?rupiah(bud):'Belum diatur';
+  balance.textContent=rupiah(totalWalletBalance());income.textContent=rupiah(inc);expense.textContent=rupiah(exp);monthExpense.textContent=rupiah(me);monthBudget.textContent=bud?rupiah(bud):'Belum diatur';
   const rawPct=bud?me/bud*100:0, pct=Math.min(100,rawPct);monthBar.style.width=pct+'%';monthBar.className='bar '+(rawPct>=100?'danger':rawPct>=70?'warn':'');
   const now=new Date(),days=now.getDate(),left=new Date(now.getFullYear(),now.getMonth()+1,0).getDate()-days+1;dailyLimit.textContent=bud?rupiah(Math.max(0,(bud-me)/left)):'-';
   const monthlyStatus=document.getElementById('monthlyBudgetStatus');
@@ -317,8 +341,10 @@ function renderHome(){
   const st=pct>=100?['Boros','Pengeluaran sudah melewati anggaran.','BOROS']:pct>=70?['Waspada','Pengeluaran mulai mendekati batas.','WASPADA']:['Aman','Pengeluaran masih sesuai anggaran.','AMAN'];
   statusText.textContent=st[0];statusNote.textContent=st[1];statusPill.textContent=st[2];
   budgetSummary.innerHTML=db.budgets.length?db.budgets.slice(0,3).map(b=>{const u=categoryTotal(b.category),raw=b.amount?u/b.amount*100:0,p=Math.min(100,raw);return `<div class="card"><div class="row"><b>${escapeHtml(b.category)}</b><span>${rupiah(u)} / ${rupiah(b.amount)}</span></div><div class="progress"><div class="bar ${raw>=100?'danger':raw>=70?'warn':''}" style="width:${p}%"></div></div>${budgetInfoHtml(u,b.amount)}</div>`}).join(''):'<div class="card empty">Belum ada anggaran kategori.</div>';
-  const r=[...db.transactions].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5);
-  recent.innerHTML=r.length?r.map(x=>`<div class="tx"><div class="row"><span><b>${escapeHtml(normalizeCategory(x.category))}</b><br><small class="muted">${x.date}</small></span><div style="text-align:right"><b class="${x.type==='income'?'green':'red'}">${x.type==='income'?'+':'−'}${rupiah(x.amount)}</b><div style="margin-top:6px"><button class="mini ghost" onclick='openTx("${x.type}",${JSON.stringify(x).replace(/</g,"\u003c").replace(/'/g,"&#39;")})'>Edit</button> <button class="mini dangerBtn" onclick="delTx(${x.id})">Hapus</button></div></div></div></div>`).join(''):'<div class="empty">Belum ada transaksi.</div>'
+  const recentNormal=[...db.transactions].map(x=>({...x,_kind:'transaction'}));
+  const recentDebt=db.debtPayments.map(x=>({...x,_kind:'debt',debtName:db.debts.find(d=>Number(d.id)===Number(x.debtId))?.name||'Utang'}));
+  const r=[...recentNormal,...recentDebt].sort((a,b)=>String(b.date).localeCompare(String(a.date))||Number(b.id)-Number(a.id)).slice(0,5);
+  recent.innerHTML=r.length?r.map(x=>x._kind==='debt'?`<div class="tx"><div class="row"><span><b>💳 Bayar Utang — ${escapeHtml(x.debtName)}</b><br><small class="muted">${escapeHtml(x.date)}</small></span><div style="text-align:right"><b class="red">−${rupiah(x.amount)}</b><br><small class="muted">Saldo berkurang • bukan pengeluaran</small></div></div></div>`:`<div class="tx"><div class="row"><span><b>${escapeHtml(normalizeCategory(x.category))}</b><br><small class="muted">${x.date}</small></span><div style="text-align:right"><b class="${x.type==='income'?'green':'red'}">${x.type==='income'?'+':'−'}${rupiah(x.amount)}</b><div style="margin-top:6px"><button class="mini ghost" onclick='openTx("${x.type}",${JSON.stringify(x).replace(/</g,"\u003c").replace(/'/g,"&#39;")})'>Edit</button> <button class="mini dangerBtn" onclick="delTx(${x.id})">Hapus</button></div></div></div></div>`).join(''):'<div class="empty">Belum ada transaksi.</div>'
 }
 
 function renderBudgets(){
@@ -530,6 +556,12 @@ function openSettings(){
       <b>🏷️ Kategori</b>
       <p class="muted">Satu daftar kategori digunakan bersama untuk pemasukan, pengeluaran, dan anggaran.</p>
       <button class="ghost" style="width:100%" onclick="openCategoryManager()">⚙️ Kelola Kategori</button>
+    </div>
+    <div class="card">
+      <b>🔄 Sinkronisasi Perhitungan</b>
+      <p class="muted">Gunakan jika setelah edit/hapus atau perubahan data Anda ingin memastikan seluruh saldo, anggaran, tabungan, utang, dan laporan dihitung ulang dari data sumber.</p>
+      <button class="primary" style="width:100%" onclick="closeModal();syncAll()">🔄 Sinkronkan Semua Perhitungan</button>
+      <div class="small-note" style="margin-top:8px">Sinkronisasi tidak membuat transaksi baru dan tidak menggandakan pembayaran.</div>
     </div>
     <div class="card">
       <b>Data pribadi</b>
