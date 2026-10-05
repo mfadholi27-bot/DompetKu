@@ -680,11 +680,34 @@ function financialAlerts(){
  return alerts;
 }
 
+function priorMonthExpenseAverage(count=3){
+ const now=new Date(); let sum=0,used=0;
+ for(let i=1;i<=count;i++){
+  const d=new Date(now.getFullYear(),now.getMonth()-i,1),m=localMonthKey(d);
+  const v=db.transactions.filter(x=>x.type==='expense'&&monthKey(x.date)===m).reduce((a,x)=>a+Number(x.amount||0),0);
+  sum+=v; used++;
+ }
+ return used?sum/used:0;
+}
+function totalSavedGoals(){return db.goals.reduce((s,g)=>s+Math.max(0,Number(g.saved)||0),0)}
+function debtPlanSummary(){
+ const debt=outstandingDebtTotal('debt');
+ const now=new Date(); let paid=0;
+ for(let i=1;i<=3;i++){
+  const d=new Date(now.getFullYear(),now.getMonth()-i,1),m=localMonthKey(d);
+  paid+=db.debtPayments.filter(x=>monthKey(x.date)===m).reduce((s,x)=>s+Number(x.amount||0),0);
+ }
+ const avg=paid/3;
+ return {debt,avg,months:avg>0?Math.ceil(debt/avg):null};
+}
 function openFinancialSummary(){
  const nw=netWorth(),bal=totalWalletBalance(),rec=outstandingDebtTotal('receivable'),debt=outstandingDebtTotal('debt'),fc=forecastMonthEndBalance();
  const inc=monthTotal('income'),exp=monthTotal('expense');
  const alerts=financialAlerts();
- openModal('📈 Ringkasan Keuangan',`<div class="card"><b>🔔 Pemberitahuan Keuangan</b>${alerts.length?alerts.slice(0,8).map(a=>`<div class="small-note" style="margin-top:7px">${escapeHtml(a)}</div>`).join(''):'<div class="small-note green" style="margin-top:7px">Tidak ada peringatan penting saat ini.</div>'}</div><div class="card"><div class="row"><span>Saldo seluruh dompet</span><b>${rupiah(bal)}</b></div><div class="row" style="margin-top:8px"><span>Piutang belum diterima</span><b class="green">${rupiah(rec)}</b></div><div class="row" style="margin-top:8px"><span>Utang belum dibayar</span><b class="red">${rupiah(debt)}</b></div><hr><div class="row"><b>Kekayaan bersih</b><b>${rupiah(nw)}</b></div></div><div class="card"><b>Perkiraan akhir bulan</b><p class="muted">Estimasi memakai rata-rata pemasukan dan pengeluaran harian pada bulan berjalan. Ini hanya proyeksi, bukan transaksi baru.</p><div class="row"><span>Pemasukan bulan ini</span><b class="green">${rupiah(inc)}</b></div><div class="row" style="margin-top:8px"><span>Pengeluaran bulan ini</span><b class="red">${rupiah(exp)}</b></div><div class="row" style="margin-top:8px"><span>Perkiraan saldo akhir</span><b class="${fc>=0?'green':'red'}">${rupiah(fc)}</b></div></div>`);
+ const plan=debtPlanSummary();
+ const avgExp=priorMonthExpenseAverage(3);
+ const emergency3=avgExp*3, emergency6=avgExp*6, saved=totalSavedGoals();
+ openModal('📈 Ringkasan Keuangan',`<div class="card"><b>🔔 Pemberitahuan Keuangan</b>${alerts.length?alerts.slice(0,8).map(a=>`<div class="small-note" style="margin-top:7px">${escapeHtml(a)}</div>`).join(''):'<div class="small-note green" style="margin-top:7px">Tidak ada peringatan penting saat ini.</div>'}</div><div class="card"><div class="row"><span>Saldo seluruh dompet</span><b>${rupiah(bal)}</b></div><div class="row" style="margin-top:8px"><span>Piutang belum diterima</span><b class="green">${rupiah(rec)}</b></div><div class="row" style="margin-top:8px"><span>Utang belum dibayar</span><b class="red">${rupiah(debt)}</b></div><hr><div class="row"><b>Kekayaan bersih</b><b>${rupiah(nw)}</b></div></div><div class="card"><b>💳 Perencana Pelunasan Utang</b><p class="muted">Perkiraan memakai rata-rata pembayaran utang pada 3 bulan terakhir. Ini hanya simulasi dan tidak membuat pembayaran otomatis.</p><div class="row"><span>Sisa seluruh utang</span><b class="red">${rupiah(plan.debt)}</b></div><div class="row" style="margin-top:8px"><span>Rata-rata bayar/bulan</span><b>${rupiah(plan.avg)}</b></div><div class="row" style="margin-top:8px"><span>Perkiraan waktu lunas</span><b>${plan.months===null?'Belum cukup data':plan.months+' bulan'}</b></div></div><div class="card"><b>🛟 Dana Darurat</b><p class="muted">Patokan memakai rata-rata pengeluaran 3 bulan terakhir. Belum ada perubahan data atau pemotongan saldo.</p><div class="row"><span>Rata-rata pengeluaran/bulan</span><b>${rupiah(avgExp)}</b></div><div class="row" style="margin-top:8px"><span>Target 3 bulan</span><b>${rupiah(emergency3)}</b></div><div class="row" style="margin-top:8px"><span>Target 6 bulan</span><b>${rupiah(emergency6)}</b></div><div class="small-note" style="margin-top:8px">Tabungan tersimpan saat ini: <b>${rupiah(saved)}</b>. Angka ini hanya informasi dan belum otomatis dianggap dana darurat.</div></div><div class="card"><b>Perkiraan akhir bulan</b><p class="muted">Estimasi memakai rata-rata pemasukan dan pengeluaran harian pada bulan berjalan. Ini hanya proyeksi, bukan transaksi baru.</p><div class="row"><span>Pemasukan bulan ini</span><b class="green">${rupiah(inc)}</b></div><div class="row" style="margin-top:8px"><span>Pengeluaran bulan ini</span><b class="red">${rupiah(exp)}</b></div><div class="row" style="margin-top:8px"><span>Perkiraan saldo akhir</span><b class="${fc>=0?'green':'red'}">${rupiah(fc)}</b></div></div>`);
 }
 
 function openCategoryManager(){
