@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0f766e">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<title>DompetKu v2.8.6</title>
+<title>DompetKu v2.8.7</title>
 <link rel="manifest" href="manifest.webmanifest">
 <style>
 :root{--bg:#f4f7f7;--card:#fff;--text:#172121;--muted:#718080;--primary:#0f766e;--danger:#dc2626;--warn:#d97706;--line:#e5e7eb}
@@ -43,7 +43,7 @@ hr{border:0;border-top:1px solid var(--line);margin:14px 0}
 <div class="card balance"><div class="muted">Saldo total</div><div class="amount" id="balance">Rp0</div><div class="stats"><div class="stat">Pemasukan<b id="income">Rp0</b></div><div class="stat">Pengeluaran<b id="expense">Rp0</b></div></div></div>
 <div class="grid"><button class="primary" onclick="openTx('income')">＋ Pemasukan</button><button class="dangerBtn" onclick="openTx('expense')">− Pengeluaran</button></div>
 <div class="section-title">Kondisi keuangan</div><div class="card"><div class="row"><b id="statusText">Aman</b><span class="pill" id="statusPill">AMAN</span></div><div class="muted" id="statusNote" style="margin-top:7px"></div></div>
-<div class="section-title">Kontrol pengeluaran</div><div class="card"><div class="row"><span>Bulan ini</span><b id="monthExpense">Rp0</b></div><div class="progress"><div id="monthBar" class="bar"></div></div><div class="row" style="margin-top:8px"><span class="muted">Anggaran</span><b id="monthBudget">Belum diatur</b></div><div class="row" style="margin-top:5px"><span class="muted">Batas aman hari ini</span><b id="dailyLimit">-</b></div></div>
+<div class="section-title">Kontrol pengeluaran</div><div class="card"><div class="row"><span>Bulan ini</span><b id="monthExpense">Rp0</b></div><div class="progress"><div id="monthBar" class="bar"></div></div><div class="row" style="margin-top:8px"><span class="muted">Anggaran</span><b id="monthBudget">Belum diatur</b></div><div id="monthlyBudgetStatus"></div><div class="row" style="margin-top:5px"><span class="muted">Batas aman hari ini</span><b id="dailyLimit">-</b></div></div>
 <div class="section-title">Anggaran kategori</div><div id="budgetSummary"></div>
 <div class="section-title">Transaksi terbaru</div><div class="card" id="recent"></div>
 </section>
@@ -291,14 +291,32 @@ function renderTransactions(){
  }).sort((a,b)=>String(b.date).localeCompare(String(a.date))||Number(b.id)-Number(a.id));
  txList.innerHTML=a.length?a.map(x=>`<div class="tx"><div class="row"><div><div class="tx-title">${escapeHtml(normalizeCategory(x.category))}</div><div class="tx-meta">${escapeHtml(x.date)} • ${escapeHtml(db.wallets.find(w=>w.id==x.wallet)?.name||'Dompet')}${x.note?' • '+escapeHtml(x.note):''}</div></div><div class="${x.type==='income'?'green':'red'}"><b>${x.type==='income'?'+':'−'}${rupiah(x.amount)}</b><br><button class="mini ghost" onclick='openTx("${x.type}",${JSON.stringify(x).replace(/</g,"\u003c").replace(/'/g,"&#39;")})'>Edit</button> <button class="mini dangerBtn" onclick="delTx(${x.id})">Hapus</button></div></div></div>`).join(''):'<div class="empty">Tidak ada transaksi yang sesuai filter.</div>'
 }
+
+function budgetInfoHtml(used,budget){
+  used=Number(used)||0; budget=Number(budget)||0;
+  if(budget<=0)return '<div class="small-note" style="margin-top:7px">Belum ada batas anggaran.</div>';
+  const pct=used/budget*100;
+  if(used>budget){
+    const over=used-budget;
+    return `<div class="small-note red" style="margin-top:7px"><b>🔴 Over anggaran ${rupiah(over)}</b> • ${pct.toFixed(0)}% terpakai</div>`;
+  }
+  const remain=budget-used;
+  if(used===budget){
+    return `<div class="small-note orange" style="margin-top:7px"><b>🟠 Anggaran habis</b> • 100% terpakai</div>`;
+  }
+  return `<div class="small-note green" style="margin-top:7px"><b>🟢 Sisa ${rupiah(remain)}</b> • ${pct.toFixed(0)}% terpakai</div>`;
+}
+
 function renderHome(){
   const inc=total('income'),exp=total('expense'),bud=db.settings.monthlyBudget||0,me=monthTotal('expense');
   balance.textContent=rupiah(inc-exp);income.textContent=rupiah(inc);expense.textContent=rupiah(exp);monthExpense.textContent=rupiah(me);monthBudget.textContent=bud?rupiah(bud):'Belum diatur';
-  const pct=bud?Math.min(100,me/bud*100):0;monthBar.style.width=pct+'%';monthBar.className='bar '+(pct>=90?'danger':pct>=70?'warn':'');
+  const rawPct=bud?me/bud*100:0, pct=Math.min(100,rawPct);monthBar.style.width=pct+'%';monthBar.className='bar '+(rawPct>=100?'danger':rawPct>=70?'warn':'');
   const now=new Date(),days=now.getDate(),left=new Date(now.getFullYear(),now.getMonth()+1,0).getDate()-days+1;dailyLimit.textContent=bud?rupiah(Math.max(0,(bud-me)/left)):'-';
+  const monthlyStatus=document.getElementById('monthlyBudgetStatus');
+  if(monthlyStatus) monthlyStatus.innerHTML=budgetInfoHtml(me,bud);
   const st=pct>=100?['Boros','Pengeluaran sudah melewati anggaran.','BOROS']:pct>=70?['Waspada','Pengeluaran mulai mendekati batas.','WASPADA']:['Aman','Pengeluaran masih sesuai anggaran.','AMAN'];
   statusText.textContent=st[0];statusNote.textContent=st[1];statusPill.textContent=st[2];
-  budgetSummary.innerHTML=db.budgets.length?db.budgets.slice(0,3).map(b=>{const u=categoryTotal(b.category),p=Math.min(100,u/b.amount*100);return `<div class="card"><div class="row"><b>${escapeHtml(b.category)}</b><span>${rupiah(u)} / ${rupiah(b.amount)}</span></div><div class="progress"><div class="bar ${p>=100?'danger':p>=70?'warn':''}" style="width:${p}%"></div></div></div>`}).join(''):'<div class="card empty">Belum ada anggaran kategori.</div>';
+  budgetSummary.innerHTML=db.budgets.length?db.budgets.slice(0,3).map(b=>{const u=categoryTotal(b.category),raw=b.amount?u/b.amount*100:0,p=Math.min(100,raw);return `<div class="card"><div class="row"><b>${escapeHtml(b.category)}</b><span>${rupiah(u)} / ${rupiah(b.amount)}</span></div><div class="progress"><div class="bar ${raw>=100?'danger':raw>=70?'warn':''}" style="width:${p}%"></div></div>${budgetInfoHtml(u,b.amount)}</div>`}).join(''):'<div class="card empty">Belum ada anggaran kategori.</div>';
   const r=[...db.transactions].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5);
   recent.innerHTML=r.length?r.map(x=>`<div class="tx"><div class="row"><span><b>${escapeHtml(normalizeCategory(x.category))}</b><br><small class="muted">${x.date}</small></span><div style="text-align:right"><b class="${x.type==='income'?'green':'red'}">${x.type==='income'?'+':'−'}${rupiah(x.amount)}</b><div style="margin-top:6px"><button class="mini ghost" onclick='openTx("${x.type}",${JSON.stringify(x).replace(/</g,"\u003c").replace(/'/g,"&#39;")})'>Edit</button> <button class="mini dangerBtn" onclick="delTx(${x.id})">Hapus</button></div></div></div></div>`).join(''):'<div class="empty">Belum ada transaksi.</div>'
 }
@@ -317,6 +335,7 @@ function renderBudgets(){
       </div>
       <div style="margin-top:8px">${rupiah(u)} / ${rupiah(b.amount)}</div>
       <div class="progress"><div class="bar ${p>=100?'danger':p>=70?'warn':''}" style="width:${p}%"></div></div>
+      ${budgetInfoHtml(u,b.amount)}
     </div>`
   }).join('')||'<div class="card empty">Belum ada anggaran.</div>';
 
