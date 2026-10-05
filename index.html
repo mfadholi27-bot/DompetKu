@@ -45,6 +45,7 @@ hr{border:0;border-top:1px solid var(--line);margin:14px 0}
 <div class="section-title">Kondisi keuangan</div><div class="card"><div class="row"><b id="statusText">Aman</b><span class="pill" id="statusPill">AMAN</span></div><div class="muted" id="statusNote" style="margin-top:7px"></div></div>
 <div class="section-title">Kontrol pengeluaran</div><div class="card"><div class="row"><span>Bulan ini</span><b id="monthExpense">Rp0</b></div><div class="progress"><div id="monthBar" class="bar"></div></div><div class="row" style="margin-top:8px"><span class="muted">Anggaran</span><b id="monthBudget">Belum diatur</b></div><div id="monthlyBudgetStatus"></div><div class="row" style="margin-top:5px"><span class="muted">Batas aman hari ini</span><b id="dailyLimit">-</b></div></div>
 <div class="section-title">Anggaran kategori</div><div id="budgetSummary"></div>
+<div class="section-title">🔔 Pemberitahuan keuangan</div><div class="card" id="financeAlerts"></div>
 <div class="section-title">Ringkasan keuangan</div><div class="grid"><div class="card"><div class="muted">Kekayaan bersih</div><b id="netWorth" style="font-size:20px">Rp0</b><div class="small-note">Dompet + piutang − utang</div></div><div class="card"><div class="muted">Perkiraan saldo akhir bulan</div><b id="forecastBalance" style="font-size:20px">Rp0</b><div class="small-note">Estimasi dari pola bulan ini</div></div></div><div class="section-title">Tagihan terdekat</div><div class="card" id="upcomingBills"></div><div class="section-title">Transaksi terbaru</div><div class="card" id="recent"></div>
 </section>
 
@@ -417,6 +418,7 @@ function renderHome(){
   statusText.textContent=st[0];statusNote.textContent=st[1];statusPill.textContent=st[2];
   budgetSummary.innerHTML=db.budgets.length?db.budgets.slice(0,3).map(b=>{const u=categoryTotal(b.category),raw=b.amount?u/b.amount*100:0,p=Math.min(100,raw);return `<div class="card"><div class="row"><b>${escapeHtml(b.category)}</b><span>${rupiah(u)} / ${rupiah(b.amount)}</span></div><div class="progress"><div class="bar ${raw>=100?'danger':raw>=70?'warn':''}" style="width:${p}%"></div></div>${budgetInfoHtml(u,b.amount)}</div>`}).join(''):'<div class="card empty">Belum ada anggaran kategori.</div>';
   const nw=document.getElementById('netWorth'); if(nw) nw.textContent=rupiah(netWorth());
+  renderFinanceAlerts();
   const fb=document.getElementById('forecastBalance'); if(fb){const v=forecastMonthEndBalance();fb.textContent=rupiah(v);fb.className=v>=0?'green':'red'}
   const ub=document.getElementById('upcomingBills');
   if(ub){const bills=nextBillInfo().slice(0,3); ub.innerHTML=bills.length?bills.map(b=>{const diff=Math.ceil((b._due-new Date())/86400000);const when=diff<=0?'Jatuh tempo hari ini':(diff===1?'Besok':'Dalam '+diff+' hari');return `<div class="tx"><div class="row"><div><b>📅 ${escapeHtml(b.name)}</b><div class="tx-meta">${when} • tanggal ${b.day}</div></div><b>${rupiah(b.amount)}</b></div></div>`}).join(''):'<div class="empty">Tidak ada tagihan yang belum dibayar.</div>'}
@@ -715,11 +717,16 @@ function openMonthlyReport(){
  openModal('Laporan Bulanan',`<div class="field"><label>Bulan</label><input id="reportMonth" type="month" value="${m}" onchange="renderMonthlyReport(this.value)"></div><div id="monthlyReportBody"></div>`);
  renderMonthlyReport(m)
 }
+function monthShift(month,delta){const [y,m]=month.split('-').map(Number);return localMonthKey(new Date(y,m-1+delta,1))}
+function categoryTotalsForMonth(month){const out={};db.transactions.filter(x=>x.type==='expense'&&monthKey(x.date)===month).forEach(x=>{const c=normalizeCategory(x.category);out[c]=(out[c]||0)+Number(x.amount)});return out}
 function renderMonthlyReport(month){
  const inc=db.transactions.filter(x=>x.type==='income'&&monthKey(x.date)===month).reduce((s,x)=>s+Number(x.amount),0),exp=db.transactions.filter(x=>x.type==='expense'&&monthKey(x.date)===month).reduce((s,x)=>s+Number(x.amount),0);
- const cats={};db.transactions.filter(x=>x.type==='expense'&&monthKey(x.date)===month).forEach(x=>{const c=normalizeCategory(x.category);cats[c]=(cats[c]||0)+Number(x.amount)});
- const top=Object.entries(cats).sort((a,b)=>b[1]-a[1]),total=top.reduce((s,x)=>s+x[1],0);
- monthlyReportBody.innerHTML=`<div class="card"><div class="row"><span>Pemasukan</span><b class="green">${rupiah(inc)}</b></div><div class="row" style="margin-top:8px"><span>Pengeluaran</span><b class="red">${rupiah(exp)}</b></div><div class="row" style="margin-top:8px"><span>Sisa</span><b>${rupiah(inc-exp)}</b></div></div><div class="card"><b>Pengeluaran per kategori</b>${top.length?top.map(([c,v])=>`<div style="margin-top:10px"><div class="row"><span>${escapeHtml(c)}</span><b>${rupiah(v)}</b></div><div class="progress"><div class="bar" style="width:${total?Math.min(100,v/total*100):0}%"></div></div></div>`).join(''):'<div class="empty">Belum ada pengeluaran bulan ini.</div>'}</div>`
+ const prev=monthShift(month,-1),prevInc=db.transactions.filter(x=>x.type==='income'&&monthKey(x.date)===prev).reduce((s,x)=>s+Number(x.amount),0),prevExp=db.transactions.filter(x=>x.type==='expense'&&monthKey(x.date)===prev).reduce((s,x)=>s+Number(x.amount),0);
+ const cats=categoryTotalsForMonth(month),prevCats=categoryTotalsForMonth(prev),top=Object.entries(cats).sort((a,b)=>b[1]-a[1]),total=top.reduce((s,x)=>s+x[1],0);
+ const expChange=prevExp?((exp-prevExp)/prevExp*100):null;
+ const catChanges=Object.entries(cats).map(([c,v])=>{const pv=prevCats[c]||0;return {c,v,pv,pct:pv?((v-pv)/pv*100):null}}).filter(x=>x.v>0).sort((a,b)=>Math.abs((b.pct??999))-Math.abs((a.pct??999))).slice(0,5);
+ const changeText=expChange===null?'Belum ada pembanding bulan sebelumnya.':(expChange>0?`🔴 Pengeluaran naik ${expChange.toFixed(0)}% dibanding ${monthLabel(prev)}.`:expChange<0?`🟢 Pengeluaran turun ${Math.abs(expChange).toFixed(0)}% dibanding ${monthLabel(prev)}.`:'🟢 Pengeluaran sama dengan bulan sebelumnya.');
+ monthlyReportBody.innerHTML=`<div class="card"><div class="row"><span>Pemasukan</span><b class="green">${rupiah(inc)}</b></div><div class="row" style="margin-top:8px"><span>Pengeluaran</span><b class="red">${rupiah(exp)}</b></div><div class="row" style="margin-top:8px"><span>Sisa</span><b>${rupiah(inc-exp)}</b></div><div class="small-note" style="margin-top:10px">${changeText}</div></div><div class="card"><b>📌 Perubahan kategori</b>${catChanges.length?catChanges.map(x=>`<div class="row" style="margin-top:9px"><span>${escapeHtml(x.c)}</span><span><b>${rupiah(x.v)}</b> <small class="${x.pct!==null&&x.pct>0?'red':'green'}">${x.pct===null?'baru':(x.pct>0?'↑ ':'↓ ')+Math.abs(x.pct).toFixed(0)+'%'}</small></span></div>`).join(''):'<div class="empty" style="margin-top:8px">Belum ada data kategori.</div>'}</div><div class="card"><b>Pengeluaran per kategori</b>${top.length?top.map(([c,v])=>`<div style="margin-top:10px"><div class="row"><span>${escapeHtml(c)}</span><b>${rupiah(v)}</b></div><div class="progress"><div class="bar ${v===top[0][1]?'warn':''}" style="width:${total?Math.min(100,v/total*100):0}%"></div></div></div>`).join(''):'<div class="empty">Belum ada pengeluaran bulan ini.</div>'}</div>`
 }
 
 function openYearlyAnalysis(){
@@ -764,6 +771,16 @@ function resetData(){
   if(!confirm('PERINGATAN TERAKHIR: pastikan Anda sudah memiliki backup jika data lama masih diperlukan. Lanjut reset?'))return;
   localStorage.removeItem(KEY);localStorage.removeItem(CAT_KEY);location.reload()
 }
+function renderFinanceAlerts(){
+ const el=document.getElementById('financeAlerts');if(!el)return;
+ const month=monthKey(new Date()),prev=monthShift(month,-1),alerts=[];
+ db.budgets.forEach(b=>{const used=categoryTotal(b.category),limit=Number(b.amount)||0;if(limit<=0)return;const pct=used/limit*100;if(pct>=100)alerts.push(`<div class="small-note red" style="margin-top:7px">🔴 <b>${escapeHtml(b.category)}</b> melebihi anggaran ${rupiah(used-limit)} (${pct.toFixed(0)}%).</div>`);else if(pct>=80)alerts.push(`<div class="small-note orange" style="margin-top:7px">🟠 <b>${escapeHtml(b.category)}</b> sudah memakai ${pct.toFixed(0)}% anggaran.</div>`)});
+ const cur=categoryTotalsForMonth(month),old=categoryTotalsForMonth(prev);
+ Object.entries(cur).forEach(([c,v])=>{const pv=old[c]||0;if(pv>0&&v>pv*1.2)alerts.push(`<div class="small-note" style="margin-top:7px">📈 <b>${escapeHtml(c)}</b> naik ${((v-pv)/pv*100).toFixed(0)}% dibanding bulan lalu.</div>`)});
+ const top=Object.entries(cur).sort((a,b)=>b[1]-a[1])[0];if(top)alerts.push(`<div class="small-note" style="margin-top:7px">🏆 Kategori terbesar bulan ini: <b>${escapeHtml(top[0])}</b> — ${rupiah(top[1])}.</div>`);
+ el.innerHTML=alerts.length?alerts.slice(0,6).join(''):'<div class="empty">🟢 Belum ada peringatan keuangan. Kondisi pengeluaran masih normal.</div>';
+}
+
 function renderReport(){
   const inc=monthTotal('income'),exp=monthTotal('expense');
   const m=db.transactions.filter(x=>x.type==='expense'&&monthKey(x.date)===monthKey(new Date())).reduce((a,x)=>{const c=normalizeCategory(x.category);a[c]=(a[c]||0)+Number(x.amount);return a},{});
