@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0f766e">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<title>DompetKu v2.9.2</title>
+<title>DompetKu v2.9.3</title>
 <link rel="manifest" href="manifest.webmanifest">
 <style>
 :root{--bg:#f4f7f7;--card:#fff;--text:#172121;--muted:#718080;--primary:#0f766e;--danger:#dc2626;--warn:#d97706;--line:#e5e7eb}
@@ -251,6 +251,10 @@ function selectedDay(value){
 }
 function save(){localStorage.setItem(KEY,JSON.stringify(db));renderAll()}
 function reconcileDerivedData(){
+  // Bersihkan riwayat pembayaran utang yang sudah tidak memiliki data utang.
+  // Ini mencegah saldo tetap berkurang setelah utang dihapus paksa.
+  const validDebtIds=new Set(db.debts.map(d=>Number(d.id)));
+  db.debtPayments=db.debtPayments.filter(p=>validDebtIds.has(Number(p.debtId)));
   // Bangun ulang nilai turunan dari riwayat operasi tanpa membuat transaksi baru.
   db.goals.forEach(g=>{
     g.target=Math.max(0,Number(g.target)||0);
@@ -624,7 +628,18 @@ function openDebt(type){
 }
 function toggleDebt(id){const x=db.debts.find(d=>+d.id===+id);if(!x)return;x.paid=!x.paid;save();closeModal();openDebt(x.type)}
 function editDebt(id){const x=db.debts.find(d=>+d.id===+id);if(!x)return;openModal('Edit '+(x.type==='debt'?'Utang':'Piutang'),`<form onsubmit="event.preventDefault();x.name=dn.value.trim();x.amount=Number(da.value);x.originalAmount=Number(x.amount)+db.debtPayments.filter(p=>Number(p.debtId)===Number(x.id)).reduce((s,p)=>s+Number(p.amount||0),0);x.note=di.value.trim();save();closeModal();openDebt('${x.type}')"><div class="field"><label>Nama</label><input id="dn" value="${escapeHtml(x.name)}" required></div><div class="field"><label>Nominal</label><input id="da" type="number" min="1" value="${x.amount}" required></div><div class="field"><label>Catatan</label><input id="di" value="${escapeHtml(x.note||'')}"></div><button class="primary" style="width:100%">Simpan</button></form>`)}
-function deleteDebt(id){const x=db.debts.find(d=>+d.id===+id);if(x&&confirm('Hapus data ini?')){db.debts=db.debts.filter(d=>+d.id!==+id);save();closeModal();openDebt(x.type)}}
+function deleteDebt(id){
+ const x=db.debts.find(d=>+d.id===+id); if(!x)return;
+ const payments=db.debtPayments.filter(p=>Number(p.debtId)===Number(id));
+ const msg=payments.length
+   ? `Hapus ${x.type==='debt'?'utang':'piutang'} ini?\n\nDitemukan ${payments.length} riwayat pembayaran. Riwayat pembayaran yang terkait juga akan dihapus agar tidak tersisa sebagai transaksi yatim dan tidak lagi mengurangi saldo.`
+   : `Hapus data ini?`;
+ if(confirm(msg)){
+   db.debtPayments=db.debtPayments.filter(p=>Number(p.debtId)!==Number(id));
+   db.debts=db.debts.filter(d=>+d.id!==+id);
+   save(); closeModal(); openDebt(x.type);
+ }
+}
 function openSettings(){
   openModal('Pengaturan',`
     <div class="card">
@@ -652,10 +667,22 @@ function openSettings(){
   `)
 }
 
+function financialAlerts(){
+ const alerts=[];
+ const m=currentMonthKey();
+ const monthExp=db.transactions.filter(x=>x.type==='expense'&&monthKey(x.date)===m);
+ const byCat={}; monthExp.forEach(x=>{const c=normalizeCategory(x.category);byCat[c]=(byCat[c]||0)+Number(x.amount||0)});
+ db.budgets.forEach(b=>{if(monthKey(b.month||m)!==m)return;const used=byCat[normalizeCategory(b.category)]||0;const limit=Number(b.amount)||0;if(limit>0&&used>limit)alerts.push(`🔴 ${normalizeCategory(b.category)} melebihi anggaran ${rupiah(used-limit)}.`)});
+ const bills=nextBillInfo().slice(0,3); bills.forEach(b=>{const days=Math.ceil((b._due-new Date())/86400000);if(days<=3)alerts.push(`📅 ${b.name} jatuh tempo ${days<=0?'hari ini':`dalam ${days} hari`} — ${rupiah(b.amount)}.`)});
+ const cats=Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,3); cats.forEach(([c,v])=>alerts.push(`📊 ${c}: ${rupiah(v)} bulan ini.`));
+ return alerts;
+}
+
 function openFinancialSummary(){
  const nw=netWorth(),bal=totalWalletBalance(),rec=outstandingDebtTotal('receivable'),debt=outstandingDebtTotal('debt'),fc=forecastMonthEndBalance();
  const inc=monthTotal('income'),exp=monthTotal('expense');
- openModal('📈 Ringkasan Keuangan',`<div class="card"><div class="row"><span>Saldo seluruh dompet</span><b>${rupiah(bal)}</b></div><div class="row" style="margin-top:8px"><span>Piutang belum diterima</span><b class="green">${rupiah(rec)}</b></div><div class="row" style="margin-top:8px"><span>Utang belum dibayar</span><b class="red">${rupiah(debt)}</b></div><hr><div class="row"><b>Kekayaan bersih</b><b>${rupiah(nw)}</b></div></div><div class="card"><b>Perkiraan akhir bulan</b><p class="muted">Estimasi memakai rata-rata pemasukan dan pengeluaran harian pada bulan berjalan. Ini hanya proyeksi, bukan transaksi baru.</p><div class="row"><span>Pemasukan bulan ini</span><b class="green">${rupiah(inc)}</b></div><div class="row" style="margin-top:8px"><span>Pengeluaran bulan ini</span><b class="red">${rupiah(exp)}</b></div><div class="row" style="margin-top:8px"><span>Perkiraan saldo akhir</span><b class="${fc>=0?'green':'red'}">${rupiah(fc)}</b></div></div>`);
+ const alerts=financialAlerts();
+ openModal('📈 Ringkasan Keuangan',`<div class="card"><b>🔔 Pemberitahuan Keuangan</b>${alerts.length?alerts.slice(0,8).map(a=>`<div class="small-note" style="margin-top:7px">${escapeHtml(a)}</div>`).join(''):'<div class="small-note green" style="margin-top:7px">Tidak ada peringatan penting saat ini.</div>'}</div><div class="card"><div class="row"><span>Saldo seluruh dompet</span><b>${rupiah(bal)}</b></div><div class="row" style="margin-top:8px"><span>Piutang belum diterima</span><b class="green">${rupiah(rec)}</b></div><div class="row" style="margin-top:8px"><span>Utang belum dibayar</span><b class="red">${rupiah(debt)}</b></div><hr><div class="row"><b>Kekayaan bersih</b><b>${rupiah(nw)}</b></div></div><div class="card"><b>Perkiraan akhir bulan</b><p class="muted">Estimasi memakai rata-rata pemasukan dan pengeluaran harian pada bulan berjalan. Ini hanya proyeksi, bukan transaksi baru.</p><div class="row"><span>Pemasukan bulan ini</span><b class="green">${rupiah(inc)}</b></div><div class="row" style="margin-top:8px"><span>Pengeluaran bulan ini</span><b class="red">${rupiah(exp)}</b></div><div class="row" style="margin-top:8px"><span>Perkiraan saldo akhir</span><b class="${fc>=0?'green':'red'}">${rupiah(fc)}</b></div></div>`);
 }
 
 function openCategoryManager(){
