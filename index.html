@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0f766e">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<title>DompetKu v2.8.9</title>
+<title>DompetKu v2.9.0</title>
 <link rel="manifest" href="manifest.webmanifest">
 <style>
 :root{--bg:#f4f7f7;--card:#fff;--text:#172121;--muted:#718080;--primary:#0f766e;--danger:#dc2626;--warn:#d97706;--line:#e5e7eb}
@@ -45,7 +45,7 @@ hr{border:0;border-top:1px solid var(--line);margin:14px 0}
 <div class="section-title">Kondisi keuangan</div><div class="card"><div class="row"><b id="statusText">Aman</b><span class="pill" id="statusPill">AMAN</span></div><div class="muted" id="statusNote" style="margin-top:7px"></div></div>
 <div class="section-title">Kontrol pengeluaran</div><div class="card"><div class="row"><span>Bulan ini</span><b id="monthExpense">Rp0</b></div><div class="progress"><div id="monthBar" class="bar"></div></div><div class="row" style="margin-top:8px"><span class="muted">Anggaran</span><b id="monthBudget">Belum diatur</b></div><div id="monthlyBudgetStatus"></div><div class="row" style="margin-top:5px"><span class="muted">Batas aman hari ini</span><b id="dailyLimit">-</b></div></div>
 <div class="section-title">Anggaran kategori</div><div id="budgetSummary"></div>
-<div class="section-title">Transaksi terbaru</div><div class="card" id="recent"></div>
+<div class="section-title">Ringkasan keuangan</div><div class="grid"><div class="card"><div class="muted">Kekayaan bersih</div><b id="netWorth" style="font-size:20px">Rp0</b><div class="small-note">Dompet + piutang − utang</div></div><div class="card"><div class="muted">Perkiraan saldo akhir bulan</div><b id="forecastBalance" style="font-size:20px">Rp0</b><div class="small-note">Estimasi dari pola bulan ini</div></div></div><div class="section-title">Tagihan terdekat</div><div class="card" id="upcomingBills"></div><div class="section-title">Transaksi terbaru</div><div class="card" id="recent"></div>
 </section>
 
 <section id="transactions" class="screen">
@@ -368,6 +368,25 @@ function budgetInfoHtml(used,budget){
   return `<div class="small-note green" style="margin-top:7px"><b>🟢 Sisa ${rupiah(remain)}</b> • ${pct.toFixed(0)}% terpakai</div>`;
 }
 
+function outstandingDebtTotal(type){return db.debts.filter(d=>d.type===type).reduce((s,d)=>s+Math.max(0,Number(d.amount)||0),0)}
+function netWorth(){return totalWalletBalance()+outstandingDebtTotal('receivable')-outstandingDebtTotal('debt')}
+function forecastMonthEndBalance(){
+  const now=new Date(), day=now.getDate(), days=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
+  const inc=monthTotal('income'), exp=monthTotal('expense');
+  if(day<=0)return totalWalletBalance();
+  const avgIn=inc/day, avgOut=exp/day;
+  return totalWalletBalance()+((avgIn-avgOut)*(days-day));
+}
+function nextBillInfo(){
+  const now=new Date(); const y=now.getFullYear(),m=now.getMonth(),today=now.getDate();
+  return db.bills.filter(b=>!b.paid).map(b=>{
+    let d=Number(b.day)||1,yy=y,mm=m;
+    const maxThis=new Date(y,m+1,0).getDate(); d=Math.min(d,maxThis);
+    if(d<today){mm++; if(mm>11){mm=0;yy++}}
+    const dt=new Date(yy,mm,Math.min(d,new Date(yy,mm+1,0).getDate()));
+    return {...b,_due:dt};
+  }).sort((a,b)=>a._due-b._due);
+}
 function renderHome(){
   const inc=total('income'),exp=total('expense'),bud=db.settings.monthlyBudget||0,me=monthTotal('expense');
   balance.textContent=rupiah(totalWalletBalance());income.textContent=rupiah(inc);expense.textContent=rupiah(exp);monthExpense.textContent=rupiah(me);monthBudget.textContent=bud?rupiah(bud):'Belum diatur';
@@ -378,6 +397,10 @@ function renderHome(){
   const st=pct>=100?['Boros','Pengeluaran sudah melewati anggaran.','BOROS']:pct>=70?['Waspada','Pengeluaran mulai mendekati batas.','WASPADA']:['Aman','Pengeluaran masih sesuai anggaran.','AMAN'];
   statusText.textContent=st[0];statusNote.textContent=st[1];statusPill.textContent=st[2];
   budgetSummary.innerHTML=db.budgets.length?db.budgets.slice(0,3).map(b=>{const u=categoryTotal(b.category),raw=b.amount?u/b.amount*100:0,p=Math.min(100,raw);return `<div class="card"><div class="row"><b>${escapeHtml(b.category)}</b><span>${rupiah(u)} / ${rupiah(b.amount)}</span></div><div class="progress"><div class="bar ${raw>=100?'danger':raw>=70?'warn':''}" style="width:${p}%"></div></div>${budgetInfoHtml(u,b.amount)}</div>`}).join(''):'<div class="card empty">Belum ada anggaran kategori.</div>';
+  const nw=document.getElementById('netWorth'); if(nw) nw.textContent=rupiah(netWorth());
+  const fb=document.getElementById('forecastBalance'); if(fb){const v=forecastMonthEndBalance();fb.textContent=rupiah(v);fb.className=v>=0?'green':'red'}
+  const ub=document.getElementById('upcomingBills');
+  if(ub){const bills=nextBillInfo().slice(0,3); ub.innerHTML=bills.length?bills.map(b=>{const diff=Math.ceil((b._due-new Date())/86400000);const when=diff<=0?'Jatuh tempo hari ini':(diff===1?'Besok':'Dalam '+diff+' hari');return `<div class="tx"><div class="row"><div><b>📅 ${escapeHtml(b.name)}</b><div class="tx-meta">${when} • tanggal ${b.day}</div></div><b>${rupiah(b.amount)}</b></div></div>`}).join(''):'<div class="empty">Tidak ada tagihan yang belum dibayar.</div>'}
   const recentNormal=[...db.transactions].map(x=>({...x,_kind:'transaction'}));
   const recentDebt=db.debtPayments.map(x=>({...x,_kind:'debt',debtName:db.debts.find(d=>Number(d.id)===Number(x.debtId))?.name||'Utang'}));
   const r=[...recentNormal,...recentDebt].sort((a,b)=>String(b.date).localeCompare(String(a.date))||Number(b.id)-Number(a.id)).slice(0,5);
@@ -599,7 +622,7 @@ function openSettings(){
       <b>🔄 Sinkronisasi Perhitungan</b>
       <p class="muted">Gunakan jika setelah edit/hapus atau perubahan data Anda ingin memastikan seluruh saldo, anggaran, tabungan, utang, dan laporan dihitung ulang dari data sumber.</p>
       <button class="primary" style="width:100%" onclick="closeModal();syncAll()">🔄 Sinkronkan Semua Perhitungan</button>
-      <button class="ghost" style="width:100%;margin-top:8px" onclick="checkDataIntegrity()">🛡️ Periksa Kesehatan Data</button>
+      <button class="ghost" style="width:100%;margin-top:8px" onclick="checkDataIntegrity()">🛡️ Periksa Kesehatan Data</button><button class="ghost" style="width:100%;margin-top:8px" onclick="openFinancialSummary()">📈 Ringkasan Kekayaan & Proyeksi</button>
       <div class="small-note" style="margin-top:8px">Sinkronisasi tidak membuat transaksi baru dan tidak menggandakan pembayaran.</div>
       <div class="small-note" style="margin-top:5px">${formatSyncTime()}</div>
     </div>
@@ -608,6 +631,12 @@ function openSettings(){
       <p class="muted">Data DompetKu disimpan lokal di perangkat ini. Tidak ada database online.</p>
     </div>
   `)
+}
+
+function openFinancialSummary(){
+ const nw=netWorth(),bal=totalWalletBalance(),rec=outstandingDebtTotal('receivable'),debt=outstandingDebtTotal('debt'),fc=forecastMonthEndBalance();
+ const inc=monthTotal('income'),exp=monthTotal('expense');
+ openModal('📈 Ringkasan Keuangan',`<div class="card"><div class="row"><span>Saldo seluruh dompet</span><b>${rupiah(bal)}</b></div><div class="row" style="margin-top:8px"><span>Piutang belum diterima</span><b class="green">${rupiah(rec)}</b></div><div class="row" style="margin-top:8px"><span>Utang belum dibayar</span><b class="red">${rupiah(debt)}</b></div><hr><div class="row"><b>Kekayaan bersih</b><b>${rupiah(nw)}</b></div></div><div class="card"><b>Perkiraan akhir bulan</b><p class="muted">Estimasi memakai rata-rata pemasukan dan pengeluaran harian pada bulan berjalan. Ini hanya proyeksi, bukan transaksi baru.</p><div class="row"><span>Pemasukan bulan ini</span><b class="green">${rupiah(inc)}</b></div><div class="row" style="margin-top:8px"><span>Pengeluaran bulan ini</span><b class="red">${rupiah(exp)}</b></div><div class="row" style="margin-top:8px"><span>Perkiraan saldo akhir</span><b class="${fc>=0?'green':'red'}">${rupiah(fc)}</b></div></div>`);
 }
 
 function openCategoryManager(){
