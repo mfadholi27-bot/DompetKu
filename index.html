@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0f766e">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<title>DompetKu v2.8.8</title>
+<title>DompetKu v2.8.9</title>
 <link rel="manifest" href="manifest.webmanifest">
 <style>
 :root{--bg:#f4f7f7;--card:#fff;--text:#172121;--muted:#718080;--primary:#0f766e;--danger:#dc2626;--warn:#d97706;--line:#e5e7eb}
@@ -235,15 +235,52 @@ function totalWalletBalance(){return db.wallets.reduce((s,w)=>s+walletBalance(w.
 
 const monthKey=d=>new Date(d).toISOString().slice(0,7);
 function save(){localStorage.setItem(KEY,JSON.stringify(db));renderAll()}
-function syncAll(){
-  // Sinkronisasi hanya menghitung ulang tampilan dari data sumber. Tidak menghapus
-  // transaksi dan tidak membuat transaksi baru atau menggandakan pembayaran.
-  db.goals.forEach(g=>{g.saved=Math.max(0,Number(g.saved)||0);g.target=Math.max(0,Number(g.target)||0)});
-  db.debts.forEach(d=>{d.amount=Math.max(0,Number(d.amount)||0);d.paid=d.amount<=0});
+function reconcileDerivedData(){
+  // Bangun ulang nilai turunan dari riwayat operasi tanpa membuat transaksi baru.
+  db.goals.forEach(g=>{
+    g.target=Math.max(0,Number(g.target)||0);
+    const moves=db.goalMoves.filter(x=>Number(x.goalId)===Number(g.id));
+    if(moves.length){
+      const saved=moves.reduce((s,x)=>s+(x.type==='save'?Number(x.amount)||0:0),0);
+      const withdrawn=moves.reduce((s,x)=>s+(x.type==='withdraw'?Number(x.amount)||0:0),0);
+      g.saved=Math.max(0,saved-withdrawn);
+    }else g.saved=Math.max(0,Number(g.saved)||0);
+  });
+  db.debts.forEach(d=>{
+    const payments=db.debtPayments.filter(x=>Number(x.debtId)===Number(d.id));
+    const paid=payments.reduce((s,x)=>s+(Number(x.amount)||0),0);
+    if(!Number.isFinite(Number(d.originalAmount)) || Number(d.originalAmount)<0){
+      d.originalAmount=Math.max(0,(Number(d.amount)||0)+paid);
+    }
+    d.originalAmount=Math.max(0,Number(d.originalAmount)||0);
+    d.amount=Math.max(0,d.originalAmount-paid);
+    d.paid=d.amount<=0;
+  });
+}
+function syncAll(showMessage=true){
+  reconcileDerivedData();
   db.settings.lastSync=new Date().toISOString();
   localStorage.setItem(KEY,JSON.stringify(db));
   renderAll();
-  alert('Sinkronisasi selesai. Semua saldo, transaksi, anggaran, tabungan, utang, dan laporan sudah dihitung ulang.');
+  if(showMessage) alert('Sinkronisasi selesai. Semua saldo, transaksi, anggaran, tabungan, utang, dan laporan sudah dihitung ulang.');
+}
+function formatSyncTime(){
+  if(!db.settings.lastSync)return 'Belum pernah disinkronkan manual.';
+  const d=new Date(db.settings.lastSync); if(Number.isNaN(d.getTime()))return 'Belum pernah disinkronkan manual.';
+  return 'Terakhir sinkron: '+d.toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'});
+}
+function dataIntegrityCheck(){
+  const issues=[];
+  const checkDup=(arr,label)=>{const seen=new Set();arr.forEach(x=>{const k=String(x.id);if(seen.has(k))issues.push(label+' memiliki ID ganda: '+k);seen.add(k)})};
+  checkDup(db.transactions,'Transaksi');checkDup(db.wallets,'Dompet');checkDup(db.goals,'Target tabungan');checkDup(db.debts,'Utang/piutang');checkDup(db.debtPayments,'Pembayaran utang');checkDup(db.goalMoves,'Riwayat tabungan');
+  db.transactions.forEach(x=>{if(!(Number(x.amount)>0))issues.push('Ada transaksi dengan nominal tidak valid.');if(!db.wallets.some(w=>Number(w.id)===Number(x.wallet)))issues.push('Ada transaksi yang menunjuk dompet yang tidak ada.')});
+  db.goalMoves.forEach(x=>{if(!db.goals.some(g=>Number(g.id)===Number(x.goalId)))issues.push('Ada riwayat tabungan tanpa target.');if(!db.wallets.some(w=>Number(w.id)===Number(x.wallet)))issues.push('Ada riwayat tabungan tanpa dompet.')});
+  db.debtPayments.forEach(x=>{if(!db.debts.some(d=>Number(d.id)===Number(x.debtId)))issues.push('Ada pembayaran utang tanpa data utang.');if(!db.wallets.some(w=>Number(w.id)===Number(x.wallet)))issues.push('Ada pembayaran utang tanpa dompet.')});
+  return [...new Set(issues)];
+}
+function checkDataIntegrity(){
+  const issues=dataIntegrityCheck();
+  openModal('🛡️ Pemeriksaan Data',issues.length?`<div class="small-note red"><b>⚠️ Ditemukan ${issues.length} hal yang perlu diperiksa.</b></div><div class="card">${issues.slice(0,20).map(x=>`<div style="margin:7px 0">• ${escapeHtml(x)}</div>`).join('')}</div><p class="muted">Tekan Sinkronkan untuk memperbaiki nilai turunan yang dapat dihitung ulang. Data sumber tidak dihapus.</p>`:`<div class="card"><b class="green">🟢 Data terlihat sehat.</b><p class="muted">Tidak ditemukan ID ganda atau hubungan data yang rusak pada pemeriksaan dasar.</p></div><div class="small-note">${escapeHtml(formatSyncTime())}</div>`);
 }
 function total(type){return db.transactions.filter(x=>x.type===type).reduce((s,x)=>s+Number(x.amount),0)}
 function monthTotal(type){const m=monthKey(new Date());return db.transactions.filter(x=>x.type===type&&monthKey(x.date)===m).reduce((s,x)=>s+Number(x.amount),0)}
@@ -527,6 +564,7 @@ function payDebt(e,debtId){
   const wallet=Number(document.getElementById('dpwallet').value), amount=Number(document.getElementById('dpamount').value);
   if(amount<=0 || amount>Number(debt.amount)){alert('Nominal pembayaran tidak valid.');return}
   if(walletBalance(wallet)<amount){alert('Saldo dompet tidak cukup.');return}
+  if(!Number.isFinite(Number(debt.originalAmount))) debt.originalAmount=Number(debt.amount);
   db.debtPayments.push({id:uid(),debtId:debt.id,wallet,amount,date:document.getElementById('dpdate').value,note:document.getElementById('dpnote').value.trim()}); debt.amount=Number(debt.amount)-amount; if(debt.amount<=0){debt.amount=0;debt.paid=true} save(); closeModal();
 }
 
@@ -540,10 +578,10 @@ function deleteBill(id){if(confirm('Hapus tagihan ini?')){db.bills=db.bills.filt
 function openDebt(type){
  const title=type==='debt'?'Utang':'Piutang';
  const list=db.debts.filter(x=>x.type===type).map(x=>`<div class="card"><div class="row"><div><b>${escapeHtml(x.name)}</b><div class="tx-meta">${x.note?escapeHtml(x.note):'Tanpa catatan'}</div></div><div><b>${rupiah(x.amount)}</b><br><span class="pill ${x.paid?'badge-ok':'badge-warn'}">${x.paid?'LUNAS':'BELUM LUNAS'}</span></div></div><div class="actions" style="margin-top:8px">${!x.paid?`<button class="mini primary" onclick="openDebtPayment(${x.id})">💳 Bayar</button>`:''}<button class="mini ghost" onclick="toggleDebt(${x.id})">${x.paid?'Belum lunas':'Tandai lunas'}</button><button class="mini ghost" onclick="editDebt(${x.id})">Edit</button><button class="mini dangerBtn" onclick="deleteDebt(${x.id})">Hapus</button></div></div>`).join('')||'<div class="empty">Belum ada.</div>';
- openModal(title,`${list}<hr><form onsubmit="event.preventDefault();const n=dn.value.trim(),a=Number(da.value);if(!n||a<=0){alert('Periksa data.');return}db.debts.push({id:uid(),type:'${type}',name:n,amount:a,note:di.value.trim(),paid:false});save();closeModal();openDebt('${type}')"><div class="field"><label>Nama</label><input id="dn" required></div><div class="field"><label>Nominal</label><input id="da" type="number" min="1" required></div><div class="field"><label>Catatan</label><input id="di"></div><button class="primary" style="width:100%">Simpan</button></form>`)
+ openModal(title,`${list}<hr><form onsubmit="event.preventDefault();const n=dn.value.trim(),a=Number(da.value);if(!n||a<=0){alert('Periksa data.');return}db.debts.push({id:uid(),type:'${type}',name:n,amount:a,originalAmount:a,note:di.value.trim(),paid:false});save();closeModal();openDebt('${type}')"><div class="field"><label>Nama</label><input id="dn" required></div><div class="field"><label>Nominal</label><input id="da" type="number" min="1" required></div><div class="field"><label>Catatan</label><input id="di"></div><button class="primary" style="width:100%">Simpan</button></form>`)
 }
 function toggleDebt(id){const x=db.debts.find(d=>+d.id===+id);if(!x)return;x.paid=!x.paid;save();closeModal();openDebt(x.type)}
-function editDebt(id){const x=db.debts.find(d=>+d.id===+id);if(!x)return;openModal('Edit '+(x.type==='debt'?'Utang':'Piutang'),`<form onsubmit="event.preventDefault();x.name=dn.value.trim();x.amount=Number(da.value);x.note=di.value.trim();save();closeModal();openDebt('${x.type}')"><div class="field"><label>Nama</label><input id="dn" value="${escapeHtml(x.name)}" required></div><div class="field"><label>Nominal</label><input id="da" type="number" min="1" value="${x.amount}" required></div><div class="field"><label>Catatan</label><input id="di" value="${escapeHtml(x.note||'')}"></div><button class="primary" style="width:100%">Simpan</button></form>`)}
+function editDebt(id){const x=db.debts.find(d=>+d.id===+id);if(!x)return;openModal('Edit '+(x.type==='debt'?'Utang':'Piutang'),`<form onsubmit="event.preventDefault();x.name=dn.value.trim();x.amount=Number(da.value);x.originalAmount=Number(x.amount)+db.debtPayments.filter(p=>Number(p.debtId)===Number(x.id)).reduce((s,p)=>s+Number(p.amount||0),0);x.note=di.value.trim();save();closeModal();openDebt('${x.type}')"><div class="field"><label>Nama</label><input id="dn" value="${escapeHtml(x.name)}" required></div><div class="field"><label>Nominal</label><input id="da" type="number" min="1" value="${x.amount}" required></div><div class="field"><label>Catatan</label><input id="di" value="${escapeHtml(x.note||'')}"></div><button class="primary" style="width:100%">Simpan</button></form>`)}
 function deleteDebt(id){const x=db.debts.find(d=>+d.id===+id);if(x&&confirm('Hapus data ini?')){db.debts=db.debts.filter(d=>+d.id!==+id);save();closeModal();openDebt(x.type)}}
 function openSettings(){
   openModal('Pengaturan',`
@@ -561,7 +599,9 @@ function openSettings(){
       <b>🔄 Sinkronisasi Perhitungan</b>
       <p class="muted">Gunakan jika setelah edit/hapus atau perubahan data Anda ingin memastikan seluruh saldo, anggaran, tabungan, utang, dan laporan dihitung ulang dari data sumber.</p>
       <button class="primary" style="width:100%" onclick="closeModal();syncAll()">🔄 Sinkronkan Semua Perhitungan</button>
+      <button class="ghost" style="width:100%;margin-top:8px" onclick="checkDataIntegrity()">🛡️ Periksa Kesehatan Data</button>
       <div class="small-note" style="margin-top:8px">Sinkronisasi tidak membuat transaksi baru dan tidak menggandakan pembayaran.</div>
+      <div class="small-note" style="margin-top:5px">${formatSyncTime()}</div>
     </div>
     <div class="card">
       <b>Data pribadi</b>
