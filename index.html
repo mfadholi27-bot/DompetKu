@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0f766e">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<title>DompetKu</title>
+<title>DompetKu v2.8.5</title>
 <link rel="manifest" href="manifest.webmanifest">
 <style>
 :root{--bg:#f4f7f7;--card:#fff;--text:#172121;--muted:#718080;--primary:#0f766e;--danger:#dc2626;--warn:#d97706;--line:#e5e7eb}
@@ -60,7 +60,7 @@ hr{border:0;border-top:1px solid var(--line);margin:14px 0}
 <div class="card" id="txList"></div>
 </section>
 
-<section id="budgets" class="screen"><div class="section-title">Anggaran & tujuan</div><button class="primary" onclick="openBudget()">＋ Tambah anggaran</button><div id="budgetList"></div><div class="section-title">Target tabungan</div><button class="ghost" onclick="openGoal()">＋ Tambah tujuan</button><div id="goalList"></div></section>
+<section id="budgets" class="screen"><div class="section-title">Anggaran & tujuan</div><button class="primary" onclick="openBudget()">＋ Tambah anggaran</button><div id="budgetList"></div><div class="section-title">Target tabungan</div><div class="actions"><button class="ghost" onclick="openGoal()">＋ Tambah tujuan</button><button class="primary" onclick="openSaveMoney()">💰 Tabung</button></div><div id="goalList"></div></section>
 
 <section id="more" class="screen"><div class="section-title">Keuangan lainnya</div><div class="grid"><button class="ghost" onclick="openWallet()">👛 Dompet</button><button class="ghost" onclick="openBill()">📅 Tagihan</button><button class="ghost" onclick="openDebt('debt')">🤝 Utang</button><button class="ghost" onclick="openDebt('receivable')">💵 Piutang</button></div>
 <div class="section-title">Laporan singkat</div><div class="card" id="report"></div>
@@ -88,12 +88,14 @@ const CAT_KEY='dompetku_categories_v25';
 
 let db=JSON.parse(localStorage.getItem(KEY)||'null')||{
   transactions:[],budgets:[],wallets:[{id:1,name:'Cash'}],transfers:[],
-  goals:[],bills:[],debts:[],settings:{monthlyBudget:0}
+  goals:[],goalMoves:[],bills:[],debts:[],debtPayments:[],settings:{monthlyBudget:0}
 };
 
 if(!Array.isArray(db.transactions)) db.transactions=[];
 if(!Array.isArray(db.budgets)) db.budgets=[];
 if(!Array.isArray(db.transfers)) db.transfers=[];
+if(!Array.isArray(db.goalMoves)) db.goalMoves=[];
+if(!Array.isArray(db.debtPayments)) db.debtPayments=[];
 if(!Array.isArray(db.wallets)||!db.wallets.length) db.wallets=[{id:1,name:'Cash'}];
 if(!Array.isArray(db.goals)) db.goals=[];
 if(!Array.isArray(db.bills)) db.bills=[];
@@ -157,7 +159,9 @@ migrateCategories();
 function walletBalance(id){
   const t=db.transactions.filter(x=>Number(x.wallet)===Number(id)).reduce((s,x)=>s+(x.type==='income'?Number(x.amount):-Number(x.amount)),0);
   const tr=db.transfers.reduce((s,x)=>s+(Number(x.from)===Number(id)?-Number(x.amount):0)+(Number(x.to)===Number(id)?Number(x.amount):0),0);
-  return t+tr;
+  const gm=db.goalMoves.reduce((s,x)=>s+(Number(x.wallet)===Number(id)?(x.type==='save'?-Number(x.amount):Number(x.amount)):0),0);
+  const dp=db.debtPayments.reduce((s,x)=>s+(Number(x.wallet)===Number(id)?-Number(x.amount):0),0);
+  return t+tr+gm+dp;
 }
 
 const monthKey=d=>new Date(d).toISOString().slice(0,7);
@@ -254,6 +258,8 @@ function renderBudgets(){
       <div class="row">
         <b>🎯 ${escapeHtml(g.name)}</b>
         <div>
+          <button class="mini primary" onclick="openSaveMoney(${g.id})">💰 Tabung</button>
+          <button class="mini ghost" onclick="withdrawMoney(${g.id})">↩️ Tarik</button>
           <button class="mini ghost" onclick="openGoal(${g.id})">Edit</button>
           <button class="mini dangerBtn" onclick="delGoal(${g.id})">Hapus</button>
         </div>
@@ -358,6 +364,56 @@ function openTransfer(){
   openModal('Transfer Antar Dompet',`<form onsubmit="event.preventDefault();let a=Number(tf.value),from=Number(tfrom.value),to=Number(tto.value);if(from===to){alert('Dompet asal dan tujuan harus berbeda.');return}if(a<=0){alert('Nominal harus lebih dari 0.');return}if(walletBalance(from)<a){alert('Saldo dompet asal tidak cukup.');return}db.transfers.push({id:uid(),amount:a,from,to,date:td.value,note:tn.value.trim()});save();closeModal()"><div class="field"><label>Nominal</label><input id="tf" type="number" min="1" required></div><div class="field"><label>Dari dompet</label><select id="tfrom">${db.wallets.map(w=>`<option value="${w.id}">${escapeHtml(w.name)} — ${rupiah(walletBalance(w.id))}</option>`).join('')}</select></div><div class="field"><label>Ke dompet</label><select id="tto">${db.wallets.map((w,i)=>`<option value="${w.id}" ${i===1?'selected':''}>${escapeHtml(w.name)}</option>`).join('')}</select></div><div class="field"><label>Tanggal</label><input id="td" type="date" value="${new Date().toISOString().slice(0,10)}" required></div><div class="field"><label>Catatan</label><input id="tn" placeholder="Opsional"></div><button class="primary" style="width:100%">Transfer</button></form>`)
 }
 
+
+function openSaveMoney(preGoalId=null){
+  if(!db.goals.length){alert('Buat minimal satu target tabungan terlebih dahulu.');return}
+  const available=db.goals.filter(g=>Number(g.target)>Number(g.saved));
+  if(!available.length){alert('Semua target tabungan sudah mencapai target.');return}
+  openModal('💰 Alokasi ke Tabungan',`
+    <p class="muted">Uang dipindahkan dari dompet ke target tabungan. Ini tidak dihitung sebagai pengeluaran.</p>
+    <form onsubmit="saveMoney(event)">
+      <div class="field"><label>Dari dompet</label><select id="smwallet">${db.wallets.map(w=>`<option value="${w.id}">${escapeHtml(w.name)} — ${rupiah(walletBalance(w.id))}</option>`).join('')}</select></div>
+      <div class="field"><label>Target tabungan</label><select id="smgoal">${available.map(g=>`<option value="${g.id}" ${preGoalId!=null&&Number(preGoalId)===Number(g.id)?'selected':''}>${escapeHtml(g.name)} — ${rupiah(g.saved)} / ${rupiah(g.target)}</option>`).join('')}</select></div>
+      <div class="field"><label>Nominal</label><input id="smamount" type="number" min="1" required></div>
+      <div class="field"><label>Tanggal</label><input id="smdate" type="date" value="${new Date().toISOString().slice(0,10)}" required></div>
+      <div class="field"><label>Catatan</label><input id="smnote" placeholder="Contoh: sisihan gaji"></div>
+      <button class="primary" style="width:100%">Simpan Tabungan</button>
+    </form>`)
+}
+function saveMoney(e){
+  e.preventDefault();
+  const wallet=Number(document.getElementById('smwallet').value), goalId=Number(document.getElementById('smgoal').value), amount=Number(document.getElementById('smamount').value), date=document.getElementById('smdate').value, note=document.getElementById('smnote').value.trim();
+  const goal=db.goals.find(g=>Number(g.id)===goalId);
+  if(!goal){alert('Target tabungan tidak ditemukan.');return}
+  if(amount<=0){alert('Nominal harus lebih dari 0.');return}
+  if(walletBalance(wallet)<amount){alert('Saldo dompet tidak cukup.');return}
+  const room=Math.max(0,Number(goal.target)-Number(goal.saved));
+  if(amount>room){alert('Nominal melebihi sisa target tabungan. Sisa target: '+rupiah(room));return}
+  db.goalMoves.push({id:uid(),type:'save',wallet,goalId,amount,date,note}); goal.saved=Number(goal.saved)+amount; save(); closeModal();
+}
+function withdrawMoney(goalId){
+  const goal=db.goals.find(g=>Number(g.id)===Number(goalId));
+  if(!goal || Number(goal.saved)<=0){alert('Belum ada dana yang bisa ditarik dari target ini.');return}
+  openModal('↩️ Tarik dari Tabungan',`<p class="muted">Dana kembali ke dompet dan tidak dihitung sebagai pemasukan.</p><form onsubmit="withdrawMoneySave(event,${goal.id})"><div class="field"><label>Ke dompet</label><select id="wmwallet">${db.wallets.map(w=>`<option value="${w.id}">${escapeHtml(w.name)}</option>`).join('')}</select></div><div class="field"><label>Nominal</label><input id="wmamount" type="number" min="1" max="${Number(goal.saved)}" required></div><div class="field"><label>Catatan</label><input id="wmnote" placeholder="Opsional"></div><button class="primary" style="width:100%">Tarik Dana</button></form>`)
+}
+function withdrawMoneySave(e,goalId){
+  e.preventDefault(); const goal=db.goals.find(g=>Number(g.id)===Number(goalId)); if(!goal)return;
+  const wallet=Number(document.getElementById('wmwallet').value), amount=Number(document.getElementById('wmamount').value);
+  if(amount<=0 || amount>Number(goal.saved)){alert('Nominal tidak valid.');return}
+  db.goalMoves.push({id:uid(),type:'withdraw',wallet,goalId,amount,date:new Date().toISOString().slice(0,10),note:document.getElementById('wmnote').value.trim()}); goal.saved=Number(goal.saved)-amount; save(); closeModal();
+}
+function openDebtPayment(debtId){
+  const debt=db.debts.find(x=>Number(x.id)===Number(debtId)); if(!debt || debt.paid || Number(debt.amount)<=0){alert('Utang ini sudah lunas.');return}
+  openModal('💳 Bayar Utang',`<p class="muted">Pembayaran mengurangi saldo dompet dan langsung mengurangi sisa utang. Tidak dihitung sebagai pengeluaran.</p><div class="card"><b>${escapeHtml(debt.name)}</b><div class="tx-meta">Sisa utang ${rupiah(debt.amount)}</div></div><form onsubmit="payDebt(event,${debt.id})"><div class="field"><label>Dari dompet</label><select id="dpwallet">${db.wallets.map(w=>`<option value="${w.id}">${escapeHtml(w.name)} — ${rupiah(walletBalance(w.id))}</option>`).join('')}</select></div><div class="field"><label>Nominal pembayaran</label><input id="dpamount" type="number" min="1" max="${Number(debt.amount)}" required></div><div class="field"><label>Tanggal</label><input id="dpdate" type="date" value="${new Date().toISOString().slice(0,10)}" required></div><div class="field"><label>Catatan</label><input id="dpnote" placeholder="Opsional"></div><button class="primary" style="width:100%">Bayar Utang</button></form>`)
+}
+function payDebt(e,debtId){
+  e.preventDefault(); const debt=db.debts.find(x=>Number(x.id)===Number(debtId)); if(!debt)return;
+  const wallet=Number(document.getElementById('dpwallet').value), amount=Number(document.getElementById('dpamount').value);
+  if(amount<=0 || amount>Number(debt.amount)){alert('Nominal pembayaran tidak valid.');return}
+  if(walletBalance(wallet)<amount){alert('Saldo dompet tidak cukup.');return}
+  db.debtPayments.push({id:uid(),debtId:debt.id,wallet,amount,date:document.getElementById('dpdate').value,note:document.getElementById('dpnote').value.trim()}); debt.amount=Number(debt.amount)-amount; if(debt.amount<=0){debt.amount=0;debt.paid=true} save(); closeModal();
+}
+
 function openBill(){
  const list=db.bills.map(b=>`<div class="card"><div class="row"><div><b>${escapeHtml(b.name)}</b><div class="tx-meta">Jatuh tempo tanggal ${b.day}</div></div><div><b>${rupiah(b.amount)}</b><br><span class="pill ${b.paid?'badge-ok':'badge-warn'}">${b.paid?'SUDAH DIBAYAR':'BELUM DIBAYAR'}</span></div></div><div class="actions" style="margin-top:8px"><button class="mini ghost" onclick="toggleBill(${b.id})">${b.paid?'Belum dibayar':'Tandai dibayar'}</button><button class="mini ghost" onclick="editBill(${b.id})">Edit</button><button class="mini dangerBtn" onclick="deleteBill(${b.id})">Hapus</button></div></div>`).join('')||'<div class="empty">Belum ada tagihan.</div>';
  openModal('Tagihan',`${list}<hr><form onsubmit="event.preventDefault();const n=bn.value.trim(),a=Number(bm.value),d=Number(bd.value);if(!n||a<=0||d<1||d>31){alert('Periksa data tagihan.');return}db.bills.push({id:uid(),name:n,amount:a,day:d,paid:false});save();closeModal()"><div class="field"><label>Nama</label><input id="bn" placeholder="Listrik" required></div><div class="field"><label>Nominal</label><input id="bm" type="number" min="1" required></div><div class="field"><label>Tanggal jatuh tempo</label><input id="bd" type="number" min="1" max="31" required></div><button class="primary" style="width:100%">Tambah</button></form>`)
@@ -367,7 +423,7 @@ function editBill(id){const b=db.bills.find(x=>+x.id===+id);if(!b)return;openMod
 function deleteBill(id){if(confirm('Hapus tagihan ini?')){db.bills=db.bills.filter(x=>+x.id!==+id);save();closeModal();openBill()}}
 function openDebt(type){
  const title=type==='debt'?'Utang':'Piutang';
- const list=db.debts.filter(x=>x.type===type).map(x=>`<div class="card"><div class="row"><div><b>${escapeHtml(x.name)}</b><div class="tx-meta">${x.note?escapeHtml(x.note):'Tanpa catatan'}</div></div><div><b>${rupiah(x.amount)}</b><br><span class="pill ${x.paid?'badge-ok':'badge-warn'}">${x.paid?'LUNAS':'BELUM LUNAS'}</span></div></div><div class="actions" style="margin-top:8px"><button class="mini ghost" onclick="toggleDebt(${x.id})">${x.paid?'Belum lunas':'Tandai lunas'}</button><button class="mini ghost" onclick="editDebt(${x.id})">Edit</button><button class="mini dangerBtn" onclick="deleteDebt(${x.id})">Hapus</button></div></div>`).join('')||'<div class="empty">Belum ada.</div>';
+ const list=db.debts.filter(x=>x.type===type).map(x=>`<div class="card"><div class="row"><div><b>${escapeHtml(x.name)}</b><div class="tx-meta">${x.note?escapeHtml(x.note):'Tanpa catatan'}</div></div><div><b>${rupiah(x.amount)}</b><br><span class="pill ${x.paid?'badge-ok':'badge-warn'}">${x.paid?'LUNAS':'BELUM LUNAS'}</span></div></div><div class="actions" style="margin-top:8px">${!x.paid?`<button class="mini primary" onclick="openDebtPayment(${x.id})">💳 Bayar</button>`:''}<button class="mini ghost" onclick="toggleDebt(${x.id})">${x.paid?'Belum lunas':'Tandai lunas'}</button><button class="mini ghost" onclick="editDebt(${x.id})">Edit</button><button class="mini dangerBtn" onclick="deleteDebt(${x.id})">Hapus</button></div></div>`).join('')||'<div class="empty">Belum ada.</div>';
  openModal(title,`${list}<hr><form onsubmit="event.preventDefault();const n=dn.value.trim(),a=Number(da.value);if(!n||a<=0){alert('Periksa data.');return}db.debts.push({id:uid(),type:'${type}',name:n,amount:a,note:di.value.trim(),paid:false});save();closeModal();openDebt('${type}')"><div class="field"><label>Nama</label><input id="dn" required></div><div class="field"><label>Nominal</label><input id="da" type="number" min="1" required></div><div class="field"><label>Catatan</label><input id="di"></div><button class="primary" style="width:100%">Simpan</button></form>`)
 }
 function toggleDebt(id){const x=db.debts.find(d=>+d.id===+id);if(!x)return;x.paid=!x.paid;save();closeModal();openDebt(x.type)}
