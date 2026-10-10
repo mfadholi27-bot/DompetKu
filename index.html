@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0b1020">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<title>DompetKu v2.10.0 Neon Pro</title>
+<title>FinKu v2.11.0 — Keuangan Pribadi</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <style>
@@ -43,28 +43,137 @@ input,select{width:100%;padding:12px;border:1px solid #2a3b55;border-radius:13px
 /* Swipeable dashboard cards */
 .dashboard-carousel{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;padding:2px 1px 12px;margin:0 -1px 4px;scrollbar-width:none;-webkit-overflow-scrolling:touch}.dashboard-carousel::-webkit-scrollbar{display:none}.dashboard-slide{flex:0 0 88%;min-width:0;scroll-snap-align:start}.dashboard-slide .card{height:100%;margin:0}.slide-kicker{font-size:11px;letter-spacing:1.3px;font-weight:850;color:#67e8f9;text-transform:uppercase}.slide-dots{display:flex;justify-content:center;gap:6px;margin:-2px 0 12px}.slide-dots span{width:6px;height:6px;border-radius:99px;background:#34445e}.slide-dots span:first-child{width:20px;background:#22d3ee}.metric-line{display:flex;justify-content:space-between;gap:8px;padding:10px 0;border-bottom:1px solid #26364d}.metric-line:last-child{border-bottom:0}.metric-line span{color:var(--muted)}.metric-line b{text-align:right}.activity-controls{display:grid;grid-template-columns:1fr 1fr;gap:8px}.activity-controls .wide{grid-column:1/-1}.filter-chips{display:flex;gap:7px;overflow-x:auto;padding:2px 0 9px;scrollbar-width:none}.filter-chip{white-space:nowrap;flex:0 0 auto;background:#101e32;color:#9fb1cc;border:1px solid #2b3e59;border-radius:999px;padding:8px 12px;font-size:12px}.filter-chip.active{background:#12394a;border-color:#1d839b;color:#8be9f9}.hero-mini{font-size:12px;color:#b6c6de}.section-head-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
 @media(min-width:600px){.dashboard-slide{flex-basis:48%}.amount{font-size:38px}}
+
+/* FinKu v2.11.0 — Clean Neon Dashboard */
+.brand-header{display:flex;align-items:center;gap:10px}
+.app-logo{width:42px;height:42px;border-radius:12px;object-fit:cover;box-shadow:0 4px 14px #0284c744}
+.welcome-row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:10px 2px 14px}
+.welcome-row h2{font-size:22px;letter-spacing:-.45px;margin:4px 0}
+.eyebrow{font-size:10px;font-weight:850;letter-spacing:1.6px;color:#67e8f9}
+.offline-badge{display:flex;align-items:center;gap:6px;white-space:nowrap;background:#0d2434;border:1px solid #1e5267;color:#a5f3fc;border-radius:999px;padding:7px 10px;font-size:10px;font-weight:750}
+.offline-dot{width:6px;height:6px;border-radius:50%;background:#34d399;box-shadow:0 0 8px #34d39988}
+.hero-balance{padding:20px;background:radial-gradient(circle at 100% 0%,#164a70 0%,transparent 45%),linear-gradient(140deg,#0d3148,#101c3b 72%,#211a48);border-color:#22658a;box-shadow:0 12px 30px #0003,inset 0 1px 0 #ffffff0b}
+.balance-label{font-size:14px;color:#c1d7ef}
+.brand-mini{font-size:12px;font-weight:900;letter-spacing:-.3px;color:#eaf5ff}
+.brand-mini span{color:#22d3ee}
+.hero-balance .amount{font-size:clamp(30px,8vw,38px);margin:8px 0 18px;overflow-wrap:anywhere}
+.hero-balance .stats{gap:8px}
+.hero-balance .stat{padding:11px;background:#06132655;border-color:#ffffff14;font-size:12px}
+.hero-balance .stat b{font-size:clamp(14px,3.7vw,17px);overflow-wrap:anywhere}
+.balance-foot{margin-top:13px;font-size:11px;color:#b6c9df}
+.quick-actions{gap:10px;margin:12px 0 18px}
+.quick-actions button{min-height:52px;font-size:14px}
+.action-symbol{font-size:19px;vertical-align:-1px;margin-right:3px}
+.budget-overview{padding:16px}
+.budget-topline{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.budget-topline .muted,.daily-limit .muted{font-size:12px}
+.budget-big{display:block;font-size:22px;letter-spacing:-.4px;margin-top:5px}
+.budget-total{text-align:right;min-width:0}
+.budget-total b{display:block;margin-top:7px;font-size:14px;overflow-wrap:anywhere}
+.budget-progress{height:9px;margin:14px 0 10px}
+.monthly-budget-status{font-size:12px;color:var(--muted)}
+.budget-bottomline{display:flex;justify-content:space-between;align-items:center;gap:12px;border-top:1px solid #26364d;margin-top:13px;padding-top:13px}
+.status-summary{display:flex;align-items:flex-start;gap:9px;min-width:0}
+.status-summary .pill{margin-top:1px;flex-shrink:0}
+.status-summary #statusText{font-size:13px}
+.status-summary #statusNote{margin-top:3px;line-height:1.4}
+.daily-limit{text-align:right;flex-shrink:0}
+.daily-limit b{display:block;margin-top:5px;font-size:13px}
+.position-grid{gap:10px}
+.metric-card{margin:0;padding:15px;min-width:0}
+.metric-icon{width:30px;height:30px;display:grid;place-items:center;border-radius:10px;background:#103449;color:#67e8f9;font-size:19px;margin-bottom:10px}
+.metric-value{display:block;font-size:clamp(17px,4.4vw,21px);letter-spacing:-.4px;margin:6px 0;overflow-wrap:anywhere}
+.metric-card .small-note{line-height:1.4}
+.alert-card{padding:14px 16px}
+.alert-card .small-note{line-height:1.55}
+.alert-card .empty{padding:9px 0}
+#upcomingBills .tx{padding:11px 0}
+#upcomingBills .tx:first-child{padding-top:0}
+#upcomingBills .tx:last-child{padding-bottom:0}
+#upcomingBills .tx b{font-size:13px}
+#upcomingBills .tx-meta{font-size:11px}
+header .brand-header h1{font-size:24px}
+@media(max-width:380px){
+ .welcome-row h2{font-size:20px}
+ .offline-badge{font-size:9px;padding:6px 8px}
+ .hero-balance{padding:16px}
+ .budget-big{font-size:19px}
+ .status-summary{gap:6px}
+ .status-summary .pill{font-size:9px;padding:5px 7px}
+}
+
 </style>
 </head>
 <body>
 <div class="app">
-<header><div><h1>DompetKu</h1><div class="sub">Keuangan pribadi • offline-first</div></div><button class="ghost" onclick="openSettings()">⚙️</button></header>
+<header><div class="brand-header"><img class="app-logo" src="icon-180.png" alt=""><div><h1>FinKu</h1><div class="sub">Kelola uang, capai tujuan</div></div></div><button class="ghost" onclick="openSettings()" aria-label="Pengaturan">⚙️</button></header>
 
 <section id="home" class="screen active">
-<div class="dashboard-carousel" id="dashboardCarousel" aria-label="Ringkasan yang bisa digeser">
-<div class="dashboard-slide"><div class="card balance"><div class="slide-kicker">✦ Ringkasan keuangan</div><div class="muted" style="margin-top:10px">Saldo total</div><div class="amount" id="balance">Rp0</div><div class="stats"><div class="stat">Pemasukan<b id="income">Rp0</b></div><div class="stat">Pengeluaran<b id="expense">Rp0</b></div></div><div class="hero-mini" style="margin-top:12px">Geser untuk melihat detail keuangan →</div></div></div>
-<div class="dashboard-slide"><div class="card"><div class="slide-kicker">👛 Saldo dompet</div><div id="walletCarouselSummary" style="margin-top:8px"></div><div class="small-note" style="margin-top:8px">Saldo per dompet, dihitung dari transaksi dan transfer.</div></div></div>
-<div class="dashboard-slide"><div class="card"><div class="slide-kicker">📊 Kontrol anggaran</div><div class="metric-line"><span>Terpakai bulan ini</span><b id="slideMonthExpense">Rp0</b></div><div class="progress"><div id="slideMonthBar" class="bar" style="width:0"></div></div><div class="metric-line"><span>Anggaran</span><b id="slideMonthBudget">Belum diatur</b></div><div class="metric-line"><span>Sisa anggaran</span><b id="slideBudgetLeft">-</b></div></div></div>
-<div class="dashboard-slide"><div class="card"><div class="slide-kicker">💼 Posisi keuangan</div><div class="metric-line"><span>Kekayaan bersih</span><b id="slideNetWorth">Rp0</b></div><div class="metric-line"><span>Sisa utang</span><b id="slideDebtTotal">Rp0</b></div><div class="metric-line"><span>Piutang</span><b id="slideReceivableTotal">Rp0</b></div><div class="metric-line"><span>Target tabungan terkumpul</span><b id="slideSavingsTotal">Rp0</b></div></div></div>
-</div><div class="slide-dots" aria-label="Empat kartu ringkasan"><span></span><span></span><span></span><span></span></div>
-<div class="grid"><button class="primary" onclick="openTx('income')">＋ Pemasukan</button><button class="dangerBtn" onclick="openTx('expense')">− Pengeluaran</button></div>
-<div class="section-title">Kondisi keuangan</div><div class="card"><div class="row"><b id="statusText">Aman</b><span class="pill" id="statusPill">AMAN</span></div><div class="muted" id="statusNote" style="margin-top:7px"></div></div>
-<div class="section-title">Kontrol pengeluaran</div><div class="card"><div class="row"><span>Bulan ini</span><b id="monthExpense">Rp0</b></div><div class="progress"><div id="monthBar" class="bar"></div></div><div class="row" style="margin-top:8px"><span class="muted">Anggaran</span><b id="monthBudget">Belum diatur</b></div><div id="monthlyBudgetStatus"></div><div class="row" style="margin-top:5px"><span class="muted">Batas aman hari ini</span><b id="dailyLimit">-</b></div></div>
-<div class="section-title">Anggaran kategori</div><div id="budgetSummary"></div>
-<div class="section-title">🔔 Pemberitahuan keuangan</div><div class="card" id="financeAlerts"></div>
-<div class="section-title">Ringkasan keuangan</div><div class="grid"><div class="card"><div class="muted">Kekayaan bersih</div><b id="netWorth" style="font-size:20px">Rp0</b><div class="small-note">Dompet + piutang − utang</div></div><div class="card"><div class="muted">Perkiraan saldo akhir bulan</div><b id="forecastBalance" style="font-size:20px">Rp0</b><div class="small-note">Estimasi dari pola bulan ini</div></div></div><div class="section-title">Tagihan terdekat</div><div class="card" id="upcomingBills"></div><div class="section-title">Transaksi terbaru</div><div class="card" id="recent"></div>
-<div class="section-head-row"><div class="section-title">🧾 Riwayat keuangan</div><button class="mini ghost" onclick="show('transactions',document.querySelectorAll('.nav button')[1])">Lihat semua ↗</button></div>
-<div class="card"><div class="filter-chips" id="homeActivityChips"><button class="filter-chip active" data-activity="all" onclick="setHomeActivityFilter('all',this)">Semua</button><button class="filter-chip" data-activity="transaction" onclick="setHomeActivityFilter('transaction',this)">Transaksi</button><button class="filter-chip" data-activity="wallet" onclick="setHomeActivityFilter('wallet',this)">Dompet</button><button class="filter-chip" data-activity="savings" onclick="setHomeActivityFilter('savings',this)">Tabungan</button><button class="filter-chip" data-activity="debt" onclick="setHomeActivityFilter('debt',this)">Utang</button><button class="filter-chip" data-activity="receivable" onclick="setHomeActivityFilter('receivable',this)">Piutang</button><button class="filter-chip" data-activity="transfer" onclick="setHomeActivityFilter('transfer',this)">Transfer</button></div>
-<div class="activity-controls"><input class="wide" id="homeActivitySearch" placeholder="🔎 Cari kategori, catatan, nama..." oninput="renderHomeActivity()"><select id="homeActivityWallet" onchange="renderHomeActivity()"><option value="all">Semua dompet</option></select><input id="homeActivityMonth" type="month" onchange="renderHomeActivity()"><button class="ghost wide" onclick="clearHomeActivityFilters()">↺ Reset filter riwayat</button></div></div><div class="card" id="homeActivityList"></div>
+  <div class="welcome-row">
+    <div>
+      <div class="eyebrow">KEUANGAN PRIBADI</div>
+      <h2>Ringkasan keuangan</h2>
+      <div class="muted">Kelola uang, capai tujuan.</div>
+    </div>
+    <span class="offline-badge"><span class="offline-dot"></span> Offline-first</span>
+  </div>
+
+  <div class="card balance hero-balance">
+    <div class="row">
+      <div class="balance-label">Total saldo</div>
+      <span class="brand-mini">Fin<span>Ku</span></span>
+    </div>
+    <div class="amount" id="balance">Rp0</div>
+    <div class="stats">
+      <div class="stat"><span>↑ Total pemasukan</span><b id="income">Rp0</b></div>
+      <div class="stat"><span>↓ Total pengeluaran</span><b id="expense">Rp0</b></div>
+    </div>
+    <div class="balance-foot">Saldo gabungan seluruh dompet</div>
+  </div>
+
+  <div class="grid quick-actions">
+    <button class="primary" onclick="openTx('income')"><span class="action-symbol">＋</span> Pemasukan</button>
+    <button class="dangerBtn" onclick="openTx('expense')"><span class="action-symbol">−</span> Pengeluaran</button>
+  </div>
+
+  <div class="section-title">Kontrol anggaran bulan ini</div>
+  <div class="card budget-overview">
+    <div class="budget-topline">
+      <div><div class="muted">Pengeluaran bulan ini</div><b id="monthExpense" class="budget-big">Rp0</b></div>
+      <div class="budget-total"><div class="muted">Anggaran</div><b id="monthBudget">Belum diatur</b></div>
+    </div>
+    <div class="progress budget-progress"><div id="monthBar" class="bar" style="width:0"></div></div>
+    <div id="monthlyBudgetStatus" class="monthly-budget-status"></div>
+    <div class="budget-bottomline">
+      <div class="status-summary">
+        <span id="statusPill" class="pill">AMAN</span>
+        <div><b id="statusText">Aman</b><div id="statusNote" class="small-note">Pengeluaran masih sesuai anggaran.</div></div>
+      </div>
+      <div class="daily-limit"><span class="muted">Batas aman/hari</span><b id="dailyLimit">-</b></div>
+    </div>
+  </div>
+
+  <div class="section-title">Posisi keuangan</div>
+  <div class="grid position-grid">
+    <div class="card metric-card">
+      <div class="metric-icon">◈</div>
+      <div class="muted">Kekayaan bersih</div>
+      <b id="netWorth" class="metric-value">Rp0</b>
+      <div class="small-note">Dompet + piutang − utang</div>
+    </div>
+    <div class="card metric-card">
+      <div class="metric-icon">↗</div>
+      <div class="muted">Proyeksi akhir bulan</div>
+      <b id="forecastBalance" class="metric-value green">Rp0</b>
+      <div class="small-note">Perkiraan, bukan saldo pasti</div>
+    </div>
+  </div>
+
+  <div class="section-title">Pengingat keuangan</div>
+  <div class="card alert-card" id="financeAlerts"></div>
+
+  <div class="section-title">Tagihan mendatang</div>
+  <div class="card" id="upcomingBills"></div>
 </section>
 
 <section id="transactions" class="screen">
@@ -83,11 +192,11 @@ input,select{width:100%;padding:12px;border:1px solid #2a3b55;border-radius:13px
 
 <section id="more" class="screen"><div class="section-title">Keuangan lainnya</div><div class="grid"><button class="ghost" onclick="openWallet()">👛 Dompet</button><button class="ghost" onclick="openBill()">📅 Tagihan</button><button class="ghost" onclick="openDebt('debt')">🤝 Utang</button><button class="ghost" onclick="openDebt('receivable')">💵 Piutang</button></div>
 <div class="section-title">Laporan singkat</div><div class="card" id="report"></div>
-<div class="section-title">📊 Analisis & Perencanaan</div><div class="grid"><button class="ghost" onclick="openFinancialSummary()">💰 Ringkasan Keuangan</button><button class="ghost" onclick="openFinancialSummary()">💳 Perencana Utang</button><button class="ghost" onclick="openFinancialSummary()">🛟 Dana Darurat</button><button class="ghost" onclick="openMonthlyReport()">📊 Laporan Bulanan</button><button class="ghost" onclick="openYearlyAnalysis()">📈 Analisis 12 Bulan</button></div><div class="section-title">Data</div><div class="grid"><button class="ghost" onclick="backup()">💾 Backup</button><button class="ghost" onclick="document.getElementById('restoreFile').click()">♻️ Restore</button><button class="ghost" onclick="exportCsv()">📄 Export CSV</button></div><button class="dangerBtn" style="width:100%;margin-top:10px" onclick="resetData()">🗑️ Reset Semua Data</button><div class="muted" style="font-size:12px;margin-top:7px">Gunakan hanya jika ingin memulai DompetKu dari awal. Data tidak dapat dikembalikan kecuali ada backup.</div><input id="restoreFile" type="file" accept=".json,application/json" hidden onchange="restore(event)"></section>
+<div class="section-title">📊 Analisis & Perencanaan</div><div class="grid"><button class="ghost" onclick="openFinancialSummary()">💰 Ringkasan Keuangan</button><button class="ghost" onclick="openFinancialSummary()">💳 Perencana Utang</button><button class="ghost" onclick="openFinancialSummary()">🛟 Dana Darurat</button><button class="ghost" onclick="openMonthlyReport()">📊 Laporan Bulanan</button><button class="ghost" onclick="openYearlyAnalysis()">📈 Analisis 12 Bulan</button></div><div class="section-title">Data</div><div class="grid"><button class="ghost" onclick="backup()">💾 Backup</button><button class="ghost" onclick="document.getElementById('restoreFile').click()">♻️ Restore</button><button class="ghost" onclick="exportCsv()">📄 Export CSV</button></div><button class="dangerBtn" style="width:100%;margin-top:10px" onclick="resetData()">🗑️ Reset Semua Data</button><div class="muted" style="font-size:12px;margin-top:7px">Gunakan hanya jika ingin memulai FinKu dari awal. Data tidak dapat dikembalikan kecuali ada backup.</div><input id="restoreFile" type="file" accept=".json,application/json" hidden onchange="restore(event)"></section>
 </div>
 
 <nav class="nav"><button class="active" onclick="show('home',this)">🏠<br>Beranda</button><button onclick="show('transactions',this)">🧾<br>Transaksi</button><button onclick="show('budgets',this)">📊<br>Anggaran</button><button onclick="show('more',this)">⚙️<br>Lainnya</button></nav>
-<div id="modal" class="modal"><div class="sheet"><div class="sheet-handle-zone" id="sheetHandleZone" aria-label="Geser ke bawah untuk menutup"><div class="sheet-handle"></div><div class="row"><h2 id="modalTitle" style="margin:0">DompetKu</h2><button class="ghost" onclick="closeModal()" aria-label="Tutup">✕</button></div></div><div id="modalBody"></div></div></div>
+<div id="modal" class="modal"><div class="sheet"><div class="sheet-handle-zone" id="sheetHandleZone" aria-label="Geser ke bawah untuk menutup"><div class="sheet-handle"></div><div class="row"><h2 id="modalTitle" style="margin:0">FinKu</h2><button class="ghost" onclick="closeModal()" aria-label="Tutup">✕</button></div></div><div id="modalBody"></div></div></div>
 
 <div id="categoryPanel" class="category-panel">
  <div class="category-box">
@@ -579,28 +688,43 @@ function renderDashboardCards(){
  const sav=document.getElementById('slideSavingsTotal');if(sav)sav.textContent=rupiah(db.goals.reduce((a,g)=>a+(Number(g.saved)||0),0));
 }
 function renderHome(){
-  const inc=total('income'),exp=total('expense'),bud=db.settings.monthlyBudget||0,me=monthTotal('expense');
-  balance.textContent=rupiah(totalWalletBalance());income.textContent=rupiah(inc);expense.textContent=rupiah(exp);monthExpense.textContent=rupiah(me);monthBudget.textContent=bud?rupiah(bud):'Belum diatur';
-  const rawPct=bud?me/bud*100:0, pct=Math.min(100,rawPct);monthBar.style.width=pct+'%';monthBar.className='bar '+(rawPct>=100?'danger':rawPct>=70?'warn':'');
-  const now=new Date(),days=now.getDate(),left=new Date(now.getFullYear(),now.getMonth()+1,0).getDate()-days+1;dailyLimit.textContent=bud?rupiah(Math.max(0,(bud-me)/left)):'-';
-  const monthlyStatus=document.getElementById('monthlyBudgetStatus');
-  if(monthlyStatus) monthlyStatus.innerHTML=budgetInfoHtml(me,bud);
-  const st=pct>=100?['Boros','Pengeluaran sudah melewati anggaran.','BOROS']:pct>=70?['Waspada','Pengeluaran mulai mendekati batas.','WASPADA']:['Aman','Pengeluaran masih sesuai anggaran.','AMAN'];
-  statusText.textContent=st[0];statusNote.textContent=st[1];statusPill.textContent=st[2];
-  budgetSummary.innerHTML=db.budgets.length?db.budgets.slice(0,3).map(b=>{const u=categoryTotal(b.category),raw=b.amount?u/b.amount*100:0,p=Math.min(100,raw);return `<div class="card"><div class="row"><b>${escapeHtml(b.category)}</b><span>${rupiah(u)} / ${rupiah(b.amount)}</span></div><div class="progress"><div class="bar ${raw>=100?'danger':raw>=70?'warn':''}" style="width:${p}%"></div></div>${budgetInfoHtml(u,b.amount)}</div>`}).join(''):'<div class="card empty">Belum ada anggaran kategori.</div>';
-  const nw=document.getElementById('netWorth'); if(nw) nw.textContent=rupiah(netWorth());
-  renderFinanceAlerts();
-  const fb=document.getElementById('forecastBalance'); if(fb){const v=forecastMonthEndBalance();fb.textContent=rupiah(v);fb.className=v>=0?'green':'red'}
-  const ub=document.getElementById('upcomingBills');
-  if(ub){const bills=nextBillInfo().slice(0,3); ub.innerHTML=bills.length?bills.map(b=>{const diff=Math.ceil((b._due-new Date())/86400000);const when=diff<=0?'Jatuh tempo hari ini':(diff===1?'Besok':'Dalam '+diff+' hari');return `<div class="tx"><div class="row"><div><b>📅 ${escapeHtml(b.name)}</b><div class="tx-meta">${when} • tanggal ${b.day}</div></div><b>${rupiah(b.amount)}</b></div></div>`}).join(''):'<div class="empty">Tidak ada tagihan yang belum dibayar.</div>'}
-  const recentNormal=[...db.transactions].map(x=>({...x,_kind:'transaction'}));
-  const recentDebt=db.debtPayments.map(x=>({...x,_kind:'debt',debtName:db.debts.find(d=>Number(d.id)===Number(x.debtId))?.name||'Utang'}));
-  const r=[...recentNormal,...recentDebt].sort((a,b)=>String(b.date).localeCompare(String(a.date))||Number(b.id)-Number(a.id)).slice(0,5);
-  recent.innerHTML=r.length?r.map(x=>x._kind==='debt'?`<div class="tx"><div class="row"><span><b>💳 Bayar Utang — ${escapeHtml(x.debtName)}</b><br><small class="muted">${escapeHtml(x.date)}</small></span><div style="text-align:right"><b class="red">−${rupiah(x.amount)}</b><br><small class="muted">Saldo berkurang • bukan pengeluaran</small></div></div></div>`:`<div class="tx"><div class="row"><span><b>${escapeHtml(normalizeCategory(x.category))}</b><br><small class="muted">${x.date}</small></span><div style="text-align:right"><b class="${x.type==='income'?'green':'red'}">${x.type==='income'?'+':'−'}${rupiah(x.amount)}</b><div style="margin-top:6px"><button class="mini ghost" onclick='openTx("${x.type}",${JSON.stringify(x).replace(/</g,"\u003c").replace(/'/g,"&#39;")})'>Edit</button> <button class="mini dangerBtn" onclick="delTx(${x.id})">Hapus</button></div></div></div></div>`).join(''):'<div class="empty">Belum ada transaksi.</div>'
-  renderDashboardCards();
-  renderHomeActivity();
-}
+  const inc=total('income'),exp=total('expense'),bud=Number(db.settings.monthlyBudget)||0,me=monthTotal('expense');
+  const setText=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=value};
+  setText('balance',rupiah(totalWalletBalance()));
+  setText('income',rupiah(inc));
+  setText('expense',rupiah(exp));
+  setText('monthExpense',rupiah(me));
+  setText('monthBudget',bud?rupiah(bud):'Belum diatur');
 
+  const rawPct=bud?me/bud*100:0,pct=Math.min(100,rawPct);
+  const bar=document.getElementById('monthBar');
+  if(bar){bar.style.width=pct+'%';bar.className='bar '+(rawPct>=100?'danger':rawPct>=70?'warn':'')}
+
+  const now=new Date(),days=now.getDate(),left=new Date(now.getFullYear(),now.getMonth()+1,0).getDate()-days+1;
+  setText('dailyLimit',bud?rupiah(Math.max(0,(bud-me)/left)):'-');
+
+  const monthlyStatus=document.getElementById('monthlyBudgetStatus');
+  if(monthlyStatus)monthlyStatus.innerHTML=budgetInfoHtml(me,bud);
+
+  const st=pct>=100?['Boros','Pengeluaran sudah melewati anggaran.','BOROS']:pct>=70?['Waspada','Pengeluaran mulai mendekati batas.','WASPADA']:['Aman','Pengeluaran masih sesuai anggaran.','AMAN'];
+  setText('statusText',st[0]);setText('statusNote',st[1]);setText('statusPill',st[2]);
+
+  setText('netWorth',rupiah(netWorth()));
+  const fb=document.getElementById('forecastBalance');
+  if(fb){const v=forecastMonthEndBalance();fb.textContent=rupiah(v);fb.className='metric-value '+(v>=0?'green':'red')}
+
+  renderFinanceAlerts();
+
+  const ub=document.getElementById('upcomingBills');
+  if(ub){
+    const bills=nextBillInfo().slice(0,3);
+    ub.innerHTML=bills.length?bills.map(b=>{
+      const diff=Math.ceil((b._due-new Date())/86400000);
+      const when=diff<=0?'Jatuh tempo hari ini':(diff===1?'Besok':'Dalam '+diff+' hari');
+      return `<div class="tx"><div class="row"><div><b>📅 ${escapeHtml(b.name)}</b><div class="tx-meta">${when} • tanggal ${b.day}</div></div><b>${rupiah(b.amount)}</b></div></div>`;
+    }).join(''):'<div class="empty">Tidak ada tagihan yang belum dibayar.</div>';
+  }
+}
 function renderBudgets(){
   const autoNote=db.settings.budgetAuto?'<div class="small-note" style="margin:8px 3px">ℹ️ Anggaran bulan ini dibuat otomatis dari rata-rata 3 bulan sebelumnya. Anda tetap bisa Edit.</div>':'';
   budgetList.innerHTML=autoNote+db.budgets.map(b=>{
@@ -791,7 +915,7 @@ function openBill(){
    const dueText=next?`Jatuh tempo ${next._due.toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'})}`:`Jatuh tempo setiap tanggal ${b.day}`;
    return `<div class="card"><div class="row"><div><b>${escapeHtml(b.name)}</b><div class="tx-meta">${dueText}</div></div><div><b>${rupiah(b.amount)}</b><br><span class="pill ${b.paid?'badge-ok':'badge-warn'}">${b.paid?'SUDAH DIBAYAR':'BELUM DIBAYAR'}</span></div></div><div class="actions" style="margin-top:8px"><button class="mini ghost" onclick="toggleBill(${b.id})">${b.paid?'Belum dibayar':'Tandai dibayar'}</button><button class="mini ghost" onclick="editBill(${b.id})">Edit</button><button class="mini dangerBtn" onclick="deleteBill(${b.id})">Hapus</button></div></div>`;
  }).join('')||'<div class="empty">Belum ada tagihan.</div>';
- openModal('Tagihan',`${list}<hr><form onsubmit="event.preventDefault();const n=bn.value.trim(),a=Number(bm.value),d=selectedDay(bd.value);if(!n||a<=0||d<1||d>31){alert('Pilih tanggal jatuh tempo yang valid.');return}db.bills.push({id:uid(),name:n,amount:a,day:d,paid:false});save();closeModal()"><div class="field"><label>Nama</label><input id="bn" placeholder="Listrik" required></div><div class="field"><label>Nominal</label><input id="bm" type="number" min="1" required></div><div class="field"><label>Tanggal jatuh tempo</label><input id="bd" type="date" value="${localDateISO()}" required></div><div class="small-note">Pilih tanggal menggunakan kalender. DompetKu tetap menyimpan tanggal jatuh tempo sebagai tanggal bulanan agar data lama tetap kompatibel.</div><button class="primary" style="width:100%">Tambah</button></form>`)
+ openModal('Tagihan',`${list}<hr><form onsubmit="event.preventDefault();const n=bn.value.trim(),a=Number(bm.value),d=selectedDay(bd.value);if(!n||a<=0||d<1||d>31){alert('Pilih tanggal jatuh tempo yang valid.');return}db.bills.push({id:uid(),name:n,amount:a,day:d,paid:false});save();closeModal()"><div class="field"><label>Nama</label><input id="bn" placeholder="Listrik" required></div><div class="field"><label>Nominal</label><input id="bm" type="number" min="1" required></div><div class="field"><label>Tanggal jatuh tempo</label><input id="bd" type="date" value="${localDateISO()}" required></div><div class="small-note">Pilih tanggal menggunakan kalender. FinKu tetap menyimpan tanggal jatuh tempo sebagai tanggal bulanan agar data lama tetap kompatibel.</div><button class="primary" style="width:100%">Tambah</button></form>`)
 }
 function toggleBill(id){const b=db.bills.find(x=>+x.id===+id);if(!b)return;b.paid=!b.paid;save();closeModal();openBill()}
 function editBill(id){const b=db.bills.find(x=>+x.id===+id);if(!b)return;openModal('Edit Tagihan',`<form onsubmit="event.preventDefault();const d=selectedDay(bd.value);if(!d||d<1||d>31){alert('Pilih tanggal jatuh tempo yang valid.');return}b.name=bn.value.trim();b.amount=Number(bm.value);b.day=d;save();closeModal();openBill()"><div class="field"><label>Nama</label><input id="bn" value="${escapeHtml(b.name)}" required></div><div class="field"><label>Nominal</label><input id="bm" type="number" min="1" value="${b.amount}" required></div><div class="field"><label>Tanggal jatuh tempo</label><input id="bd" type="date" value="${billDateValue(b.day)}" required></div><div class="small-note">Gunakan kalender untuk memilih tanggal. Data tagihan lama tetap aman.</div><button class="primary" style="width:100%">Simpan Perubahan</button></form>`)}
@@ -837,7 +961,7 @@ function openSettings(){
     </div>
     <div class="card">
       <b>Data pribadi</b>
-      <p class="muted">Data DompetKu disimpan lokal di perangkat ini. Tidak ada database online.</p>
+      <p class="muted">Data FinKu disimpan lokal di perangkat ini. Tidak ada database online.</p>
     </div>
   `)
 }
@@ -906,7 +1030,7 @@ function exportCsv(){
  const rows=[['Tanggal','Jenis','Kategori','Dompet','Nominal','Catatan']];
  [...db.transactions].sort((a,b)=>String(a.date).localeCompare(String(b.date))).forEach(x=>rows.push([x.date,x.type==='income'?'Pemasukan':'Pengeluaran',normalizeCategory(x.category),db.wallets.find(w=>+w.id===+x.wallet)?.name||'Dompet',x.amount,x.note||'']));
  const csv='\ufeff'+rows.map(r=>r.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(',')).join('\r\n');
- const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='DompetKu_Transaksi_'+localDateISO()+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='FinKu_Transaksi_'+localDateISO()+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)
 }
 function openMonthlyReport(){
  const m=monthKey(new Date());
@@ -957,7 +1081,7 @@ window.addEventListener("resize",()=>{const c=document.getElementById("expenseCh
 
 function backup(){
   const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='DompetKu_Backup_'+localDateISO()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='FinKu_Backup_'+localDateISO()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)
 }
 function restore(e){
   const f=e.target.files[0];if(!f)return;
@@ -972,7 +1096,7 @@ function restore(e){
   r.readAsText(f);e.target.value=''
 }
 function resetData(){
-  if(!confirm('Reset semua data DompetKu? Semua transaksi, anggaran, target tabungan, tagihan, utang/piutang, dan dompet tambahan akan dihapus.'))return;
+  if(!confirm('Reset semua data FinKu? Semua transaksi, anggaran, target tabungan, tagihan, utang/piutang, dan dompet tambahan akan dihapus.'))return;
   if(!confirm('PERINGATAN TERAKHIR: pastikan Anda sudah memiliki backup jika data lama masih diperlukan. Lanjut reset?'))return;
   localStorage.removeItem(KEY);localStorage.removeItem(CAT_KEY);location.reload()
 }
@@ -998,13 +1122,11 @@ renderAll();
 </script>
 
 <script>
-/* DompetKu PWA offline support */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function () {
-    navigator.serviceWorker.register('./sw.js')
-      .catch(function (error) {
-        console.error('DompetKu service worker gagal didaftarkan:', error);
-      });
+    navigator.serviceWorker.register('./sw.js').catch(function (error) {
+      console.error('FinKu: pendaftaran mode offline gagal.', error);
+    });
   });
 }
 </script>

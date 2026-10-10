@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_NAME = 'dompetku-v2-10-0-offline';
+const CACHE_NAME = 'finku-v2-11-0';
 const APP_FILES = [
   './',
   './index.html',
@@ -21,8 +21,10 @@ self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys()
       .then(keys => Promise.all(
-        keys.filter(key => key.startsWith('dompetku-') && key !== CACHE_NAME)
-            .map(key => caches.delete(key))
+        keys.filter(key =>
+          (key.startsWith('dompetku-') || key.startsWith('finku-')) &&
+          key !== CACHE_NAME
+        ).map(key => caches.delete(key))
       ))
       .then(() => self.clients.claim())
   );
@@ -31,14 +33,10 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const request = event.request;
   const url = new URL(request.url);
-
-  // Do not intercept non-GET requests or requests to other origins.
   if (request.method !== 'GET' || url.origin !== self.location.origin) return;
 
   event.respondWith((async () => {
     const cache = await caches.open(CACHE_NAME);
-
-    // For page navigation, use the cached app shell first when offline.
     if (request.mode === 'navigate') {
       try {
         const response = await fetch(request);
@@ -52,7 +50,6 @@ self.addEventListener('fetch', event => {
 
     const cached = await cache.match(request);
     if (cached) return cached;
-
     try {
       const response = await fetch(request);
       if (response && response.ok && response.type === 'basic') {
