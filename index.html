@@ -3,36 +3,32 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0f766e">
+<meta name="theme-color" content="#0b1020">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<title>DompetKu v2.9.3</title>
+<title>DompetKu v2.9.8</title>
 <link rel="manifest" href="manifest.webmanifest">
 <style>
-:root{--bg:#f4f7f7;--card:#fff;--text:#172121;--muted:#718080;--primary:#0f766e;--danger:#dc2626;--warn:#d97706;--line:#e5e7eb}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-.app{max-width:760px;margin:auto;padding:env(safe-area-inset-top) 14px calc(78px + env(safe-area-inset-bottom))}
-header{padding:18px 4px 10px;display:flex;justify-content:space-between;align-items:center}
-h1{font-size:25px;margin:0}.sub{color:var(--muted);font-size:13px;margin-top:4px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin:10px 0;box-shadow:0 2px 10px #00000008}
-.balance{background:var(--primary);color:white}.balance .muted{color:#d7fffa}.amount{font-size:32px;font-weight:800;margin:7px 0 14px}
-.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}.stat{background:#ffffff18;border-radius:13px;padding:11px}.stat b{display:block;font-size:17px;margin-top:4px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.section-title{font-weight:800;margin:18px 3px 8px}
-.row{display:flex;justify-content:space-between;gap:12px;align-items:center}.muted{color:var(--muted)}.green{color:#059669}.red{color:var(--danger)}.orange{color:var(--warn)}
-.progress{height:9px;background:#edf0f0;border-radius:20px;overflow:hidden;margin-top:8px}.bar{height:100%;background:var(--primary);border-radius:20px}.bar.warn{background:var(--warn)}.bar.danger{background:var(--danger)}
-button,input,select{font:inherit}button{border:0;border-radius:13px;padding:12px 14px;font-weight:700;cursor:pointer}.primary{background:var(--primary);color:white}.ghost{background:#eef5f4;color:var(--primary)}.dangerBtn{background:#fee2e2;color:#991b1b}
-input,select{width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;background:white;margin-top:6px}.field{margin:10px 0}.field label{font-size:13px;color:var(--muted)}
-.tx{padding:12px 0;border-bottom:1px solid var(--line)}.tx:last-child{border-bottom:0}.tx-title{font-weight:700}.tx-meta{font-size:12px;color:var(--muted);margin-top:3px}
-.nav{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:8px 10px calc(8px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(4,1fr);gap:5px;z-index:5}.nav button{background:transparent;color:var(--muted);padding:8px 4px;font-size:12px}.nav button.active{color:var(--primary)}
+:root{--bg:#080d19;--card:#111a2b;--card2:#152238;--text:#edf4ff;--muted:#94a7c3;--primary:#22d3ee;--danger:#fb7185;--warn:#fbbf24;--line:#27364e;--green:#34d399;--blue:#60a5fa}
+*{box-sizing:border-box}html{background:var(--bg);color-scheme:dark}body{margin:0;background:radial-gradient(ellipse at top,#13223b 0%,#080d19 55%);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh}
+.app{max-width:760px;margin:auto;padding:env(safe-area-inset-top) 14px calc(88px + env(safe-area-inset-bottom))}
+header{padding:18px 4px 14px;display:flex;justify-content:space-between;align-items:center}h1{font-size:27px;letter-spacing:-.6px;margin:0;font-weight:850}.sub{color:var(--muted);font-size:13px;margin-top:4px}
+.card{background:linear-gradient(145deg,rgba(20,31,51,.98),rgba(13,22,38,.98));border:1px solid var(--line);border-radius:20px;padding:16px;margin:10px 0;box-shadow:0 10px 28px #0003, inset 0 1px 0 #ffffff08}
+.balance{background:linear-gradient(135deg,#0d3148 0%,#12465b 48%,#17334f 100%);border:1px solid #28708a;position:relative;overflow:hidden}.balance:after{content:"";position:absolute;width:180px;height:180px;right:-65px;top:-90px;border-radius:50%;background:#22d3ee14;pointer-events:none}.balance .muted{color:#b7e9f7}.amount{font-size:34px;font-weight:850;margin:8px 0 16px;letter-spacing:-.8px}.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}.stat{background:#ffffff0c;border:1px solid #ffffff12;border-radius:15px;padding:12px;color:#dbeafe}.stat b{display:block;font-size:17px;margin-top:5px;color:#fff}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.section-title{font-weight:800;font-size:17px;letter-spacing:-.2px;margin:20px 3px 8px;color:#e5efff}
+.row{display:flex;justify-content:space-between;gap:12px;align-items:center}.muted{color:var(--muted)}.green{color:var(--green)}.red{color:var(--danger)}.orange{color:var(--warn)}
+.progress{height:8px;background:#25334a;border-radius:20px;overflow:hidden;margin-top:8px}.bar{height:100%;background:linear-gradient(90deg,#22d3ee,#60a5fa);border-radius:20px}.bar.warn{background:linear-gradient(90deg,#fbbf24,#f59e0b)}.bar.danger{background:linear-gradient(90deg,#fb7185,#ef4444)}
+button,input,select{font:inherit}button{border:1px solid transparent;border-radius:14px;padding:12px 14px;font-weight:750;cursor:pointer;transition:transform .12s ease,filter .12s ease}button:active{transform:scale(.98)}.primary{background:linear-gradient(135deg,#0891b2,#2563eb);color:white;box-shadow:0 5px 16px #0891b233}.ghost{background:#14243a;color:#67e8f9;border-color:#2a415e}.dangerBtn{background:#3b1d2b;color:#fda4af;border-color:#713344}
+input,select{width:100%;padding:12px;border:1px solid #2a3b55;border-radius:13px;background:#0b1424;color:var(--text);margin-top:6px;outline:none}input:focus,select:focus{border-color:#22d3ee;box-shadow:0 0 0 3px #22d3ee1c}.field{margin:10px 0}.field label{font-size:13px;color:var(--muted)}
+.tx{padding:12px 0;border-bottom:1px solid var(--line)}.tx:last-child{border-bottom:0}.tx-title{font-weight:750}.tx-meta{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.5}
+.nav{position:fixed;left:0;right:0;bottom:0;background:#090f1df2;backdrop-filter:blur(18px);border-top:1px solid #263650;padding:8px 10px calc(8px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(4,1fr);gap:5px;z-index:5}.nav button{background:transparent;color:#7f91ac;padding:8px 4px;font-size:12px;border:0}.nav button.active{color:#67e8f9;background:#123047;border-radius:13px}
 .screen{display:none}.screen.active{display:block}.empty{text-align:center;color:var(--muted);padding:25px 10px}
-.modal{position:fixed;inset:0;background:#0007;display:none;align-items:flex-end;z-index:20}.modal.show{display:flex}.sheet{background:#fff;width:100%;border-radius:22px 22px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));max-height:92vh;overflow:auto}
-.actions{display:flex;gap:8px}.actions>*{flex:1}.mini{padding:7px 9px;font-size:12px}.pill{display:inline-block;padding:5px 9px;border-radius:99px;font-size:11px;font-weight:800;background:#eef5f4;color:var(--primary)}
-.category-panel{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;padding:20px;display:none}
-.category-box{background:#fff;max-width:520px;margin:40px auto;padding:18px;border-radius:18px;max-height:88vh;overflow:auto}
-.cat-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #eee}
-.cat-add{display:flex;gap:8px;margin-top:12px}.cat-add input{margin-top:0}
-hr{border:0;border-top:1px solid var(--line);margin:14px 0}
-.filter-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.filter-grid .full{grid-column:1/-1}.small-note{font-size:12px;color:var(--muted)}.badge-ok{background:#dcfce7;color:#166534}.badge-warn{background:#fef3c7;color:#92400e}.badge-danger{background:#fee2e2;color:#991b1b}
+.modal{position:fixed;inset:0;background:#020617bd;backdrop-filter:blur(8px);display:none;align-items:flex-end;z-index:20}.modal.show{display:flex}.sheet{background:#0f192b;border:1px solid #2c405c;width:100%;border-radius:24px 24px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));max-height:92vh;overflow:auto}
+.actions{display:flex;gap:8px}.actions>*{flex:1}.mini{padding:7px 9px;font-size:12px}.pill{display:inline-block;padding:5px 9px;border-radius:99px;font-size:11px;font-weight:850;background:#123447;color:#67e8f9;border:1px solid #20516a}
+.category-panel{position:fixed;inset:0;background:rgba(2,6,23,.8);z-index:9999;padding:20px;display:none}.category-box{background:#111a2b;border:1px solid var(--line);max-width:520px;margin:40px auto;padding:18px;border-radius:18px;max-height:88vh;overflow:auto}.cat-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--line)}.cat-add{display:flex;gap:8px;margin-top:12px}.cat-add input{margin-top:0}hr{border:0;border-top:1px solid var(--line);margin:14px 0}.filter-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.filter-grid .full{grid-column:1/-1}.small-note{font-size:12px;color:var(--muted)}.badge-ok{background:#12382f;color:#6ee7b7}.badge-warn{background:#3a2c13;color:#fcd34d}.badge-danger{background:#421d2a;color:#fda4af}
+/* Swipeable dashboard cards */
+.dashboard-carousel{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;padding:2px 1px 12px;margin:0 -1px 4px;scrollbar-width:none;-webkit-overflow-scrolling:touch}.dashboard-carousel::-webkit-scrollbar{display:none}.dashboard-slide{flex:0 0 88%;min-width:0;scroll-snap-align:start}.dashboard-slide .card{height:100%;margin:0}.slide-kicker{font-size:11px;letter-spacing:1.3px;font-weight:850;color:#67e8f9;text-transform:uppercase}.slide-dots{display:flex;justify-content:center;gap:6px;margin:-2px 0 12px}.slide-dots span{width:6px;height:6px;border-radius:99px;background:#34445e}.slide-dots span:first-child{width:20px;background:#22d3ee}.metric-line{display:flex;justify-content:space-between;gap:8px;padding:10px 0;border-bottom:1px solid #26364d}.metric-line:last-child{border-bottom:0}.metric-line span{color:var(--muted)}.metric-line b{text-align:right}.activity-controls{display:grid;grid-template-columns:1fr 1fr;gap:8px}.activity-controls .wide{grid-column:1/-1}.filter-chips{display:flex;gap:7px;overflow-x:auto;padding:2px 0 9px;scrollbar-width:none}.filter-chip{white-space:nowrap;flex:0 0 auto;background:#101e32;color:#9fb1cc;border:1px solid #2b3e59;border-radius:999px;padding:8px 12px;font-size:12px}.filter-chip.active{background:#12394a;border-color:#1d839b;color:#8be9f9}.hero-mini{font-size:12px;color:#b6c6de}.section-head-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+@media(min-width:600px){.dashboard-slide{flex-basis:48%}.amount{font-size:38px}}
 </style>
 </head>
 <body>
@@ -40,13 +36,21 @@ hr{border:0;border-top:1px solid var(--line);margin:14px 0}
 <header><div><h1>DompetKu</h1><div class="sub">Keuangan pribadi • offline-first</div></div><button class="ghost" onclick="openSettings()">⚙️</button></header>
 
 <section id="home" class="screen active">
-<div class="card balance"><div class="muted">Saldo total</div><div class="amount" id="balance">Rp0</div><div class="stats"><div class="stat">Pemasukan<b id="income">Rp0</b></div><div class="stat">Pengeluaran<b id="expense">Rp0</b></div></div></div>
+<div class="dashboard-carousel" id="dashboardCarousel" aria-label="Ringkasan yang bisa digeser">
+<div class="dashboard-slide"><div class="card balance"><div class="slide-kicker">✦ Ringkasan keuangan</div><div class="muted" style="margin-top:10px">Saldo total</div><div class="amount" id="balance">Rp0</div><div class="stats"><div class="stat">Pemasukan<b id="income">Rp0</b></div><div class="stat">Pengeluaran<b id="expense">Rp0</b></div></div><div class="hero-mini" style="margin-top:12px">Geser untuk melihat detail keuangan →</div></div></div>
+<div class="dashboard-slide"><div class="card"><div class="slide-kicker">👛 Saldo dompet</div><div id="walletCarouselSummary" style="margin-top:8px"></div><div class="small-note" style="margin-top:8px">Saldo per dompet, dihitung dari transaksi dan transfer.</div></div></div>
+<div class="dashboard-slide"><div class="card"><div class="slide-kicker">📊 Kontrol anggaran</div><div class="metric-line"><span>Terpakai bulan ini</span><b id="slideMonthExpense">Rp0</b></div><div class="progress"><div id="slideMonthBar" class="bar" style="width:0"></div></div><div class="metric-line"><span>Anggaran</span><b id="slideMonthBudget">Belum diatur</b></div><div class="metric-line"><span>Sisa anggaran</span><b id="slideBudgetLeft">-</b></div></div></div>
+<div class="dashboard-slide"><div class="card"><div class="slide-kicker">💼 Posisi keuangan</div><div class="metric-line"><span>Kekayaan bersih</span><b id="slideNetWorth">Rp0</b></div><div class="metric-line"><span>Sisa utang</span><b id="slideDebtTotal">Rp0</b></div><div class="metric-line"><span>Piutang</span><b id="slideReceivableTotal">Rp0</b></div><div class="metric-line"><span>Target tabungan terkumpul</span><b id="slideSavingsTotal">Rp0</b></div></div></div>
+</div><div class="slide-dots" aria-label="Empat kartu ringkasan"><span></span><span></span><span></span><span></span></div>
 <div class="grid"><button class="primary" onclick="openTx('income')">＋ Pemasukan</button><button class="dangerBtn" onclick="openTx('expense')">− Pengeluaran</button></div>
 <div class="section-title">Kondisi keuangan</div><div class="card"><div class="row"><b id="statusText">Aman</b><span class="pill" id="statusPill">AMAN</span></div><div class="muted" id="statusNote" style="margin-top:7px"></div></div>
 <div class="section-title">Kontrol pengeluaran</div><div class="card"><div class="row"><span>Bulan ini</span><b id="monthExpense">Rp0</b></div><div class="progress"><div id="monthBar" class="bar"></div></div><div class="row" style="margin-top:8px"><span class="muted">Anggaran</span><b id="monthBudget">Belum diatur</b></div><div id="monthlyBudgetStatus"></div><div class="row" style="margin-top:5px"><span class="muted">Batas aman hari ini</span><b id="dailyLimit">-</b></div></div>
 <div class="section-title">Anggaran kategori</div><div id="budgetSummary"></div>
 <div class="section-title">🔔 Pemberitahuan keuangan</div><div class="card" id="financeAlerts"></div>
 <div class="section-title">Ringkasan keuangan</div><div class="grid"><div class="card"><div class="muted">Kekayaan bersih</div><b id="netWorth" style="font-size:20px">Rp0</b><div class="small-note">Dompet + piutang − utang</div></div><div class="card"><div class="muted">Perkiraan saldo akhir bulan</div><b id="forecastBalance" style="font-size:20px">Rp0</b><div class="small-note">Estimasi dari pola bulan ini</div></div></div><div class="section-title">Tagihan terdekat</div><div class="card" id="upcomingBills"></div><div class="section-title">Transaksi terbaru</div><div class="card" id="recent"></div>
+<div class="section-head-row"><div class="section-title">🧾 Riwayat keuangan</div><button class="mini ghost" onclick="show('transactions',document.querySelectorAll('.nav button')[1])">Lihat semua ↗</button></div>
+<div class="card"><div class="filter-chips" id="homeActivityChips"><button class="filter-chip active" data-activity="all" onclick="setHomeActivityFilter('all',this)">Semua</button><button class="filter-chip" data-activity="transaction" onclick="setHomeActivityFilter('transaction',this)">Transaksi</button><button class="filter-chip" data-activity="wallet" onclick="setHomeActivityFilter('wallet',this)">Dompet</button><button class="filter-chip" data-activity="savings" onclick="setHomeActivityFilter('savings',this)">Tabungan</button><button class="filter-chip" data-activity="debt" onclick="setHomeActivityFilter('debt',this)">Utang</button><button class="filter-chip" data-activity="receivable" onclick="setHomeActivityFilter('receivable',this)">Piutang</button><button class="filter-chip" data-activity="transfer" onclick="setHomeActivityFilter('transfer',this)">Transfer</button></div>
+<div class="activity-controls"><input class="wide" id="homeActivitySearch" placeholder="🔎 Cari kategori, catatan, nama..." oninput="renderHomeActivity()"><select id="homeActivityWallet" onchange="renderHomeActivity()"><option value="all">Semua dompet</option></select><input id="homeActivityMonth" type="month" onchange="renderHomeActivity()"><button class="ghost wide" onclick="clearHomeActivityFilters()">↺ Reset filter riwayat</button></div></div><div class="card" id="homeActivityList"></div>
 </section>
 
 <section id="transactions" class="screen">
@@ -419,6 +423,72 @@ function nextBillInfo(){
     return {...b,_due:dt};
   }).sort((a,b)=>a._due-b._due);
 }
+let homeActivityFilter='all';
+function setHomeActivityFilter(kind,button){
+ homeActivityFilter=kind;
+ document.querySelectorAll('#homeActivityChips .filter-chip').forEach(b=>b.classList.toggle('active',b===button));
+ renderHomeActivity();
+}
+function clearHomeActivityFilters(){
+ const q=document.getElementById('homeActivitySearch'),m=document.getElementById('homeActivityMonth'),w=document.getElementById('homeActivityWallet');
+ if(q)q.value='';if(m)m.value='';if(w)w.value='all';homeActivityFilter='all';
+ document.querySelectorAll('#homeActivityChips .filter-chip').forEach(b=>b.classList.toggle('active',b.dataset.activity==='all'));
+ renderHomeActivity();
+}
+function populateHomeActivityWallets(){
+ const el=document.getElementById('homeActivityWallet');if(!el)return;const old=el.value||'all';
+ el.innerHTML='<option value="all">Semua dompet</option>'+db.wallets.map(w=>`<option value="${w.id}">${escapeHtml(w.name)}</option>`).join('');
+ if([...el.options].some(o=>o.value===old))el.value=old;
+}
+function renderHomeActivity(){
+ const el=document.getElementById('homeActivityList');if(!el)return;populateHomeActivityWallets();
+ const q=(document.getElementById('homeActivitySearch')?.value||'').trim().toLowerCase();
+ const wallet=document.getElementById('homeActivityWallet')?.value||'all',month=document.getElementById('homeActivityMonth')?.value||'';
+ const rows=[];
+ db.transactions.forEach(x=>rows.push({kind:'transaction',subtype:x.type,title:normalizeCategory(x.category),amount:Number(x.amount)||0,date:x.date,wallet:Number(x.wallet),note:x.note||'',sign:x.type==='income'?'+':'−',color:x.type==='income'?'green':'red'}));
+ db.transfers.forEach(x=>{
+  const from=db.wallets.find(w=>Number(w.id)===Number(x.from)),to=db.wallets.find(w=>Number(w.id)===Number(x.to));
+  rows.push({kind:'transfer',title:'Transfer antar-dompet',amount:Number(x.amount)||0,date:x.date,wallet:null,from:Number(x.from),to:Number(x.to),note:x.note||'',meta:`${from?.name||'Dompet asal'} → ${to?.name||'Dompet tujuan'}`,sign:'↔',color:'',id:x.id});
+ });
+ db.goalMoves.forEach(x=>{
+  const goal=db.goals.find(g=>Number(g.id)===Number(x.goalId));
+  rows.push({kind:'savings',title:x.type==='save'?'Alokasi ke tabungan':'Penarikan tabungan',amount:Number(x.amount)||0,date:x.date,wallet:Number(x.wallet),note:x.note||'',meta:goal?.name||'Target tabungan',sign:x.type==='save'?'−':'+',color:x.type==='save'?'red':'green',id:x.id});
+ });
+ db.debtPayments.forEach(x=>{
+  const debt=db.debts.find(d=>Number(d.id)===Number(x.debtId));if(!debt)return;
+  const isReceivable=debt.type==='receivable';
+  rows.push({kind:isReceivable?'receivable':'debt',title:isReceivable?'Penerimaan piutang':'Bayar utang',amount:Number(x.amount)||0,date:x.date,wallet:Number(x.wallet),note:x.note||'',meta:debt.name,sign:isReceivable?'+':'−',color:isReceivable?'green':'red',id:x.id});
+ });
+ const filtered=rows.filter(x=>{
+  const text=(x.title+' '+(x.meta||'')+' '+(x.note||'')+' '+(db.wallets.find(w=>Number(w.id)===Number(x.wallet))?.name||'')).toLowerCase();
+  const walletOk=wallet==='all'||Number(x.wallet)===Number(wallet)||Number(x.from)===Number(wallet)||Number(x.to)===Number(wallet);
+  const monthOk=!month||String(x.date||'').slice(0,7)===month;
+  let kindOk=homeActivityFilter==='all'||(homeActivityFilter==='wallet'?x.kind==='transaction':x.kind===homeActivityFilter);
+  if(homeActivityFilter==='transaction')kindOk=x.kind==='transaction';
+  return (!q||text.includes(q))&&walletOk&&monthOk&&kindOk;
+ }).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))||Number(b.id||0)-Number(a.id||0)).slice(0,12);
+ el.innerHTML=filtered.length?filtered.map(x=>{
+  let meta=(x.date||'Tanggal tidak tersedia');
+  if(x.kind==='transfer')meta+=' • '+(x.meta||'Transfer');
+  else if(x.wallet!=null)meta+=' • '+(db.wallets.find(w=>Number(w.id)===Number(x.wallet))?.name||'Dompet');
+  if(x.kind==='savings'||x.kind==='debt'||x.kind==='receivable')meta+=' • '+(x.meta||'');
+  if(x.note)meta+=' • '+x.note;
+  const amountLabel=x.kind==='transfer'?'↔ '+rupiah(x.amount):x.sign+rupiah(x.amount);
+  const kindLabel={transaction:'TRANSAKSI',transfer:'TRANSFER',savings:'TABUNGAN',debt:'UTANG',receivable:'PIUTANG'}[x.kind]||'RIWAYAT';
+  return `<div class="tx"><div class="row"><div style="min-width:0"><div class="tx-title">${escapeHtml(x.title)}</div><div class="tx-meta">${escapeHtml(meta)}</div><span class="pill" style="margin-top:5px">${kindLabel}</span></div><div style="text-align:right;white-space:nowrap"><b class="${x.color}">${amountLabel}</b></div></div></div>`;
+ }).join(''):'<div class="empty">Tidak ada riwayat yang sesuai filter.</div>';
+}
+function renderDashboardCards(){
+ const walletEl=document.getElementById('walletCarouselSummary');
+ if(walletEl){const list=db.wallets.slice(0,4);walletEl.innerHTML=list.length?list.map(w=>`<div class="metric-line"><span>${escapeHtml(w.name)}</span><b>${rupiah(walletBalance(w.id))}</b></div>`).join('')+(db.wallets.length>4?`<div class="small-note" style="margin-top:8px">+${db.wallets.length-4} dompet lainnya</div>`:''):'<div class="empty">Belum ada dompet.</div>'}
+ const me=monthTotal('expense'),bud=Number(db.settings.monthlyBudget)||0;
+ const se=document.getElementById('slideMonthExpense'),sb=document.getElementById('slideMonthBudget'),sl=document.getElementById('slideBudgetLeft'),bar=document.getElementById('slideMonthBar');
+ if(se)se.textContent=rupiah(me);if(sb)sb.textContent=bud?rupiah(bud):'Belum diatur';if(sl){sl.textContent=bud?rupiah(bud-me):'-';sl.className=bud-me<0?'red':'green'}if(bar){bar.style.width=Math.min(100,bud?me/bud*100:0)+'%';bar.className='bar '+(bud&&me>=bud?'danger':bud&&me/bud>=.7?'warn':'')}
+ const nw=document.getElementById('slideNetWorth');if(nw)nw.textContent=rupiah(netWorth());
+ const debt=document.getElementById('slideDebtTotal');if(debt)debt.textContent=rupiah(outstandingDebtTotal('debt'));
+ const rec=document.getElementById('slideReceivableTotal');if(rec)rec.textContent=rupiah(outstandingDebtTotal('receivable'));
+ const sav=document.getElementById('slideSavingsTotal');if(sav)sav.textContent=rupiah(db.goals.reduce((a,g)=>a+(Number(g.saved)||0),0));
+}
 function renderHome(){
   const inc=total('income'),exp=total('expense'),bud=db.settings.monthlyBudget||0,me=monthTotal('expense');
   balance.textContent=rupiah(totalWalletBalance());income.textContent=rupiah(inc);expense.textContent=rupiah(exp);monthExpense.textContent=rupiah(me);monthBudget.textContent=bud?rupiah(bud):'Belum diatur';
@@ -438,6 +508,8 @@ function renderHome(){
   const recentDebt=db.debtPayments.map(x=>({...x,_kind:'debt',debtName:db.debts.find(d=>Number(d.id)===Number(x.debtId))?.name||'Utang'}));
   const r=[...recentNormal,...recentDebt].sort((a,b)=>String(b.date).localeCompare(String(a.date))||Number(b.id)-Number(a.id)).slice(0,5);
   recent.innerHTML=r.length?r.map(x=>x._kind==='debt'?`<div class="tx"><div class="row"><span><b>💳 Bayar Utang — ${escapeHtml(x.debtName)}</b><br><small class="muted">${escapeHtml(x.date)}</small></span><div style="text-align:right"><b class="red">−${rupiah(x.amount)}</b><br><small class="muted">Saldo berkurang • bukan pengeluaran</small></div></div></div>`:`<div class="tx"><div class="row"><span><b>${escapeHtml(normalizeCategory(x.category))}</b><br><small class="muted">${x.date}</small></span><div style="text-align:right"><b class="${x.type==='income'?'green':'red'}">${x.type==='income'?'+':'−'}${rupiah(x.amount)}</b><div style="margin-top:6px"><button class="mini ghost" onclick='openTx("${x.type}",${JSON.stringify(x).replace(/</g,"\u003c").replace(/'/g,"&#39;")})'>Edit</button> <button class="mini dangerBtn" onclick="delTx(${x.id})">Hapus</button></div></div></div></div>`).join(''):'<div class="empty">Belum ada transaksi.</div>'
+  renderDashboardCards();
+  renderHomeActivity();
 }
 
 function renderBudgets(){
