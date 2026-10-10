@@ -44,136 +44,125 @@ input,select{width:100%;padding:12px;border:1px solid #2a3b55;border-radius:13px
 .dashboard-carousel{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;padding:2px 1px 12px;margin:0 -1px 4px;scrollbar-width:none;-webkit-overflow-scrolling:touch}.dashboard-carousel::-webkit-scrollbar{display:none}.dashboard-slide{flex:0 0 88%;min-width:0;scroll-snap-align:start}.dashboard-slide .card{height:100%;margin:0}.slide-kicker{font-size:11px;letter-spacing:1.3px;font-weight:850;color:#67e8f9;text-transform:uppercase}.slide-dots{display:flex;justify-content:center;gap:6px;margin:-2px 0 12px}.slide-dots span{width:6px;height:6px;border-radius:99px;background:#34445e}.slide-dots span:first-child{width:20px;background:#22d3ee}.metric-line{display:flex;justify-content:space-between;gap:8px;padding:10px 0;border-bottom:1px solid #26364d}.metric-line:last-child{border-bottom:0}.metric-line span{color:var(--muted)}.metric-line b{text-align:right}.activity-controls{display:grid;grid-template-columns:1fr 1fr;gap:8px}.activity-controls .wide{grid-column:1/-1}.filter-chips{display:flex;gap:7px;overflow-x:auto;padding:2px 0 9px;scrollbar-width:none}.filter-chip{white-space:nowrap;flex:0 0 auto;background:#101e32;color:#9fb1cc;border:1px solid #2b3e59;border-radius:999px;padding:8px 12px;font-size:12px}.filter-chip.active{background:#12394a;border-color:#1d839b;color:#8be9f9}.hero-mini{font-size:12px;color:#b6c6de}.section-head-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
 @media(min-width:600px){.dashboard-slide{flex-basis:48%}.amount{font-size:38px}}
 
-/* FinKu v2.11.0 — Clean Neon Dashboard */
-.brand-header{display:flex;align-items:center;gap:10px}
-.app-logo{width:42px;height:42px;border-radius:12px;object-fit:cover;box-shadow:0 4px 14px #0284c744}
-.welcome-row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:10px 2px 14px}
-.welcome-row h2{font-size:22px;letter-spacing:-.45px;margin:4px 0}
-.eyebrow{font-size:10px;font-weight:850;letter-spacing:1.6px;color:#67e8f9}
-.offline-badge{display:flex;align-items:center;gap:6px;white-space:nowrap;background:#0d2434;border:1px solid #1e5267;color:#a5f3fc;border-radius:999px;padding:7px 10px;font-size:10px;font-weight:750}
-.offline-dot{width:6px;height:6px;border-radius:50%;background:#34d399;box-shadow:0 0 8px #34d39988}
-.hero-balance{padding:20px;background:radial-gradient(circle at 100% 0%,#164a70 0%,transparent 45%),linear-gradient(140deg,#0d3148,#101c3b 72%,#211a48);border-color:#22658a;box-shadow:0 12px 30px #0003,inset 0 1px 0 #ffffff0b}
-.balance-label{font-size:14px;color:#c1d7ef}
-.brand-mini{font-size:12px;font-weight:900;letter-spacing:-.3px;color:#eaf5ff}
+/* FinKu v2.11.0 Clean Neon: swipe cards retained, repeated activity removed */
+.brand-header{display:flex;align-items:center;gap:12px;min-width:0}
+.app-logo{display:block;width:54px;height:54px;flex:0 0 54px;border-radius:16px;object-fit:cover;box-shadow:0 5px 20px #0284c744}
+header .brand-header h1{font-size:27px;letter-spacing:-.7px;margin:0}
+.settings-button{width:54px;height:54px;display:grid;place-items:center;font-size:25px;border-radius:17px}
+.home-intro{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:12px 2px 16px}
+.home-intro h2{font-size:23px;letter-spacing:-.55px;margin:5px 0}
+.eyebrow{font-size:10px;font-weight:900;letter-spacing:2.1px;color:#67e8f9}
+.offline-badge{display:flex;align-items:center;gap:6px;white-space:nowrap;background:#0d2434;border:1px solid #1e5267;color:#a5f3fc;border-radius:999px;padding:8px 10px;font-size:10px;font-weight:800}
+.offline-dot{width:7px;height:7px;border-radius:50%;background:#34d399;box-shadow:0 0 8px #34d39988}
+.dashboard-carousel{gap:12px;padding:3px 2px 13px;margin:0 -1px 0}
+.dashboard-slide{flex-basis:88%}
+.dashboard-slide .card{border-radius:20px;min-height:215px;padding:19px}
+.dashboard-slide .balance{background:radial-gradient(circle at 100% 0%,#164a70 0%,transparent 45%),linear-gradient(140deg,#0d3148,#101c3b 72%,#211a48);border-color:#22658a}
+.slide-kicker{font-size:11px;letter-spacing:1.2px;font-weight:900;color:#67e8f9;text-transform:uppercase}
+.brand-mini{font-size:13px;font-weight:900;color:#eaf5ff}
 .brand-mini span{color:#22d3ee}
-.hero-balance .amount{font-size:clamp(30px,8vw,38px);margin:8px 0 18px;overflow-wrap:anywhere}
+.hero-balance .amount{font-size:clamp(30px,8vw,39px);letter-spacing:-1px;margin:8px 0 17px;overflow-wrap:anywhere}
 .hero-balance .stats{gap:8px}
-.hero-balance .stat{padding:11px;background:#06132655;border-color:#ffffff14;font-size:12px}
-.hero-balance .stat b{font-size:clamp(14px,3.7vw,17px);overflow-wrap:anywhere}
-.balance-foot{margin-top:13px;font-size:11px;color:#b6c9df}
-.quick-actions{gap:10px;margin:12px 0 18px}
-.quick-actions button{min-height:52px;font-size:14px}
-.action-symbol{font-size:19px;vertical-align:-1px;margin-right:3px}
-.budget-overview{padding:16px}
-.budget-topline{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
-.budget-topline .muted,.daily-limit .muted{font-size:12px}
-.budget-big{display:block;font-size:22px;letter-spacing:-.4px;margin-top:5px}
-.budget-total{text-align:right;min-width:0}
-.budget-total b{display:block;margin-top:7px;font-size:14px;overflow-wrap:anywhere}
-.budget-progress{height:9px;margin:14px 0 10px}
-.monthly-budget-status{font-size:12px;color:var(--muted)}
-.budget-bottomline{display:flex;justify-content:space-between;align-items:center;gap:12px;border-top:1px solid #26364d;margin-top:13px;padding-top:13px}
-.status-summary{display:flex;align-items:flex-start;gap:9px;min-width:0}
-.status-summary .pill{margin-top:1px;flex-shrink:0}
-.status-summary #statusText{font-size:13px}
-.status-summary #statusNote{margin-top:3px;line-height:1.4}
-.daily-limit{text-align:right;flex-shrink:0}
-.daily-limit b{display:block;margin-top:5px;font-size:13px}
-.position-grid{gap:10px}
-.metric-card{margin:0;padding:15px;min-width:0}
-.metric-icon{width:30px;height:30px;display:grid;place-items:center;border-radius:10px;background:#103449;color:#67e8f9;font-size:19px;margin-bottom:10px}
-.metric-value{display:block;font-size:clamp(17px,4.4vw,21px);letter-spacing:-.4px;margin:6px 0;overflow-wrap:anywhere}
-.metric-card .small-note{line-height:1.4}
+.hero-balance .stat{padding:12px;background:#06132666;border-color:#ffffff14;font-size:12px}
+.hero-balance .stat b{font-size:clamp(15px,4vw,18px);overflow-wrap:anywhere}
+.hero-mini{font-size:11px;color:#b6c9df}
+.slide-card{background:linear-gradient(145deg,#121f34,#0d1728);border-color:#2b3c57}
+.slide-card .metric-line{padding:13px 0;align-items:center}
+.slide-card .metric-line span{font-size:13px;color:#b9c8dc}
+.slide-card .metric-line b{font-size:14px;text-align:right;overflow-wrap:anywhere}
+.slide-card .small-note{font-size:11px;line-height:1.45;color:#91a5c1}
+.slide-dots{margin:0 0 14px}
+.quick-actions{gap:10px;margin:5px 0 22px}
+.quick-actions button{min-height:55px;font-size:15px;border-radius:16px}
+.action-symbol{font-size:22px;font-weight:800;vertical-align:-1px;margin-right:4px}
 .alert-card{padding:14px 16px}
 .alert-card .small-note{line-height:1.55}
-.alert-card .empty{padding:9px 0}
-#upcomingBills .tx{padding:11px 0}
+#upcomingBills .tx{padding:12px 0}
 #upcomingBills .tx:first-child{padding-top:0}
 #upcomingBills .tx:last-child{padding-bottom:0}
-#upcomingBills .tx b{font-size:13px}
-#upcomingBills .tx-meta{font-size:11px}
-header .brand-header h1{font-size:24px}
+.nav{padding:9px 8px calc(8px + env(safe-area-inset-bottom));gap:5px;align-items:stretch}
+.nav button{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:9px 2px 8px;border-radius:16px;font-size:12px;font-weight:750;line-height:1.1;color:#94a7c3;background:transparent;transition:background .18s ease,color .18s ease,transform .18s ease}
+.nav button svg{width:27px;height:27px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.nav button span{display:block;white-space:nowrap;font-size:12px}
+.nav button.active{color:#67e8f9;background:linear-gradient(145deg,#10344a,#11253e);box-shadow:inset 0 0 0 1px #1c536b}
+.nav button.active svg{stroke:#67e8f9;filter:drop-shadow(0 0 3px #22d3ee55)}
 @media(max-width:380px){
- .welcome-row h2{font-size:20px}
- .offline-badge{font-size:9px;padding:6px 8px}
- .hero-balance{padding:16px}
- .budget-big{font-size:19px}
- .status-summary{gap:6px}
- .status-summary .pill{font-size:9px;padding:5px 7px}
+ .app-logo{width:48px;height:48px;flex-basis:48px}
+ .home-intro h2{font-size:20px}
+ .offline-badge{font-size:9px;padding:7px 8px}
+ .dashboard-slide{flex-basis:91%}
+ .dashboard-slide .card{padding:16px}
+ .nav button svg{width:25px;height:25px}
+ .nav button span{font-size:11px}
 }
 
 </style>
 </head>
 <body>
 <div class="app">
-<header><div class="brand-header"><img class="app-logo" src="icon-180.png" alt=""><div><h1>FinKu</h1><div class="sub">Kelola uang, capai tujuan</div></div></div><button class="ghost" onclick="openSettings()" aria-label="Pengaturan">⚙️</button></header>
+<header><div class="brand-header"><img class="app-logo" src="icon-180.png" alt="Logo FinKu"><div><h1>FinKu</h1><div class="sub">Kelola uang, capai tujuan</div></div></div><button class="ghost settings-button" onclick="openSettings()" aria-label="Pengaturan">⚙</button></header>
 
 <section id="home" class="screen active">
-  <div class="welcome-row">
-    <div>
-      <div class="eyebrow">KEUANGAN PRIBADI</div>
-      <h2>Ringkasan keuangan</h2>
-      <div class="muted">Kelola uang, capai tujuan.</div>
-    </div>
-    <span class="offline-badge"><span class="offline-dot"></span> Offline-first</span>
+<div class="home-intro">
+  <div>
+    <div class="eyebrow">KEUANGAN PRIBADI</div>
+    <h2>Ringkasan keuangan</h2>
+    <div class="muted">Kelola uang, capai tujuan.</div>
   </div>
+  <span class="offline-badge"><span class="offline-dot"></span> Offline-first</span>
+</div>
 
-  <div class="card balance hero-balance">
-    <div class="row">
-      <div class="balance-label">Total saldo</div>
-      <span class="brand-mini">Fin<span>Ku</span></span>
-    </div>
-    <div class="amount" id="balance">Rp0</div>
-    <div class="stats">
-      <div class="stat"><span>↑ Total pemasukan</span><b id="income">Rp0</b></div>
-      <div class="stat"><span>↓ Total pengeluaran</span><b id="expense">Rp0</b></div>
-    </div>
-    <div class="balance-foot">Saldo gabungan seluruh dompet</div>
-  </div>
-
-  <div class="grid quick-actions">
-    <button class="primary" onclick="openTx('income')"><span class="action-symbol">＋</span> Pemasukan</button>
-    <button class="dangerBtn" onclick="openTx('expense')"><span class="action-symbol">−</span> Pengeluaran</button>
-  </div>
-
-  <div class="section-title">Kontrol anggaran bulan ini</div>
-  <div class="card budget-overview">
-    <div class="budget-topline">
-      <div><div class="muted">Pengeluaran bulan ini</div><b id="monthExpense" class="budget-big">Rp0</b></div>
-      <div class="budget-total"><div class="muted">Anggaran</div><b id="monthBudget">Belum diatur</b></div>
-    </div>
-    <div class="progress budget-progress"><div id="monthBar" class="bar" style="width:0"></div></div>
-    <div id="monthlyBudgetStatus" class="monthly-budget-status"></div>
-    <div class="budget-bottomline">
-      <div class="status-summary">
-        <span id="statusPill" class="pill">AMAN</span>
-        <div><b id="statusText">Aman</b><div id="statusNote" class="small-note">Pengeluaran masih sesuai anggaran.</div></div>
+<div class="dashboard-carousel" id="dashboardCarousel" aria-label="Empat kartu ringkasan keuangan yang bisa digeser">
+  <div class="dashboard-slide">
+    <div class="card balance hero-balance">
+      <div class="row"><div class="slide-kicker">01 · Ringkasan keuangan</div><span class="brand-mini">Fin<span>Ku</span></span></div>
+      <div class="muted" style="margin-top:12px">Total saldo</div>
+      <div class="amount" id="balance">Rp0</div>
+      <div class="stats">
+        <div class="stat"><span>↑ Pemasukan</span><b id="income">Rp0</b></div>
+        <div class="stat"><span>↓ Pengeluaran</span><b id="expense">Rp0</b></div>
       </div>
-      <div class="daily-limit"><span class="muted">Batas aman/hari</span><b id="dailyLimit">-</b></div>
+      <div class="hero-mini" style="margin-top:12px">Geser untuk melihat ringkasan lainnya →</div>
     </div>
   </div>
-
-  <div class="section-title">Posisi keuangan</div>
-  <div class="grid position-grid">
-    <div class="card metric-card">
-      <div class="metric-icon">◈</div>
-      <div class="muted">Kekayaan bersih</div>
-      <b id="netWorth" class="metric-value">Rp0</b>
-      <div class="small-note">Dompet + piutang − utang</div>
-    </div>
-    <div class="card metric-card">
-      <div class="metric-icon">↗</div>
-      <div class="muted">Proyeksi akhir bulan</div>
-      <b id="forecastBalance" class="metric-value green">Rp0</b>
-      <div class="small-note">Perkiraan, bukan saldo pasti</div>
+  <div class="dashboard-slide">
+    <div class="card slide-card">
+      <div class="slide-kicker">02 · Saldo dompet</div>
+      <div id="walletCarouselSummary" style="margin-top:10px"></div>
+      <div class="small-note" style="margin-top:10px">Saldo setiap dompet, dihitung dari transaksi dan transfer.</div>
     </div>
   </div>
+  <div class="dashboard-slide">
+    <div class="card slide-card">
+      <div class="slide-kicker">03 · Kontrol anggaran</div>
+      <div class="metric-line"><span>Pengeluaran bulan ini</span><b id="slideMonthExpense">Rp0</b></div>
+      <div class="progress"><div id="slideMonthBar" class="bar" style="width:0"></div></div>
+      <div class="metric-line"><span>Anggaran bulanan</span><b id="slideMonthBudget">Belum diatur</b></div>
+      <div class="metric-line"><span>Sisa anggaran</span><b id="slideBudgetLeft">-</b></div>
+      <div class="small-note" style="margin-top:10px">Pantau pemakaian anggaran tanpa membuka menu lain.</div>
+    </div>
+  </div>
+  <div class="dashboard-slide">
+    <div class="card slide-card">
+      <div class="slide-kicker">04 · Posisi keuangan</div>
+      <div class="metric-line"><span>Kekayaan bersih</span><b id="slideNetWorth">Rp0</b></div>
+      <div class="metric-line"><span>Sisa utang</span><b id="slideDebtTotal">Rp0</b></div>
+      <div class="metric-line"><span>Piutang</span><b id="slideReceivableTotal">Rp0</b></div>
+      <div class="metric-line"><span>Total tabungan terkumpul</span><b id="slideSavingsTotal">Rp0</b></div>
+    </div>
+  </div>
+</div>
+<div class="slide-dots" aria-label="Empat kartu ringkasan"><span></span><span></span><span></span><span></span></div>
 
-  <div class="section-title">Pengingat keuangan</div>
-  <div class="card alert-card" id="financeAlerts"></div>
+<div class="grid quick-actions">
+  <button class="primary" onclick="openTx('income')"><span class="action-symbol">＋</span> Pemasukan</button>
+  <button class="dangerBtn" onclick="openTx('expense')"><span class="action-symbol">−</span> Pengeluaran</button>
+</div>
 
-  <div class="section-title">Tagihan mendatang</div>
-  <div class="card" id="upcomingBills"></div>
+<div class="section-title">Pengingat keuangan</div>
+<div class="card alert-card" id="financeAlerts"></div>
+<div class="section-title">Tagihan mendatang</div>
+<div class="card" id="upcomingBills"></div>
 </section>
 
 <section id="transactions" class="screen">
@@ -195,7 +184,12 @@ header .brand-header h1{font-size:24px}
 <div class="section-title">📊 Analisis & Perencanaan</div><div class="grid"><button class="ghost" onclick="openFinancialSummary()">💰 Ringkasan Keuangan</button><button class="ghost" onclick="openFinancialSummary()">💳 Perencana Utang</button><button class="ghost" onclick="openFinancialSummary()">🛟 Dana Darurat</button><button class="ghost" onclick="openMonthlyReport()">📊 Laporan Bulanan</button><button class="ghost" onclick="openYearlyAnalysis()">📈 Analisis 12 Bulan</button></div><div class="section-title">Data</div><div class="grid"><button class="ghost" onclick="backup()">💾 Backup</button><button class="ghost" onclick="document.getElementById('restoreFile').click()">♻️ Restore</button><button class="ghost" onclick="exportCsv()">📄 Export CSV</button></div><button class="dangerBtn" style="width:100%;margin-top:10px" onclick="resetData()">🗑️ Reset Semua Data</button><div class="muted" style="font-size:12px;margin-top:7px">Gunakan hanya jika ingin memulai FinKu dari awal. Data tidak dapat dikembalikan kecuali ada backup.</div><input id="restoreFile" type="file" accept=".json,application/json" hidden onchange="restore(event)"></section>
 </div>
 
-<nav class="nav"><button class="active" onclick="show('home',this)">🏠<br>Beranda</button><button onclick="show('transactions',this)">🧾<br>Transaksi</button><button onclick="show('budgets',this)">📊<br>Anggaran</button><button onclick="show('more',this)">⚙️<br>Lainnya</button></nav>
+<nav class="nav" aria-label="Navigasi utama">
+<button class="active" onclick="show('home',this)" aria-label="Beranda"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7"/><path d="M5.5 9v11h13V9M9 20v-6h6v6"/></svg><span>Beranda</span></button>
+<button onclick="show('transactions',this)" aria-label="Transaksi"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span>Transaksi</span></button>
+<button onclick="show('budgets',this)" aria-label="Anggaran"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V12h4v8M10 20V5h4v15M16 20V9h4v11"/><path d="M2 20h20"/></svg><span>Anggaran</span></button>
+<button onclick="show('more',this)" aria-label="Lainnya"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1 1.2.9-1.5 2.6-1.4-.6a8 8 0 0 1-1.7 1l-.2 1.5h-3l-.3-1.5a8 8 0 0 1-1.7-1l-1.4.6L8 16l1.2-1a7 7 0 0 1 0-2l-1.2-1 1.5-2.6 1.4.6a8 8 0 0 1 1.7-1l.3-1.5h3l.2 1.5a8 8 0 0 1 1.7 1l1.4-.6 1.5 2.6-1.2 1a7 7 0 0 1 .1 2Z" transform="translate(-1 -1) scale(.98)"/></svg><span>Lainnya</span></button>
+</nav>
 <div id="modal" class="modal"><div class="sheet"><div class="sheet-handle-zone" id="sheetHandleZone" aria-label="Geser ke bawah untuk menutup"><div class="sheet-handle"></div><div class="row"><h2 id="modalTitle" style="margin:0">FinKu</h2><button class="ghost" onclick="closeModal()" aria-label="Tutup">✕</button></div></div><div id="modalBody"></div></div></div>
 
 <div id="categoryPanel" class="category-panel">
@@ -688,31 +682,12 @@ function renderDashboardCards(){
  const sav=document.getElementById('slideSavingsTotal');if(sav)sav.textContent=rupiah(db.goals.reduce((a,g)=>a+(Number(g.saved)||0),0));
 }
 function renderHome(){
-  const inc=total('income'),exp=total('expense'),bud=Number(db.settings.monthlyBudget)||0,me=monthTotal('expense');
-  const setText=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=value};
-  setText('balance',rupiah(totalWalletBalance()));
-  setText('income',rupiah(inc));
-  setText('expense',rupiah(exp));
-  setText('monthExpense',rupiah(me));
-  setText('monthBudget',bud?rupiah(bud):'Belum diatur');
-
-  const rawPct=bud?me/bud*100:0,pct=Math.min(100,rawPct);
-  const bar=document.getElementById('monthBar');
-  if(bar){bar.style.width=pct+'%';bar.className='bar '+(rawPct>=100?'danger':rawPct>=70?'warn':'')}
-
-  const now=new Date(),days=now.getDate(),left=new Date(now.getFullYear(),now.getMonth()+1,0).getDate()-days+1;
-  setText('dailyLimit',bud?rupiah(Math.max(0,(bud-me)/left)):'-');
-
-  const monthlyStatus=document.getElementById('monthlyBudgetStatus');
-  if(monthlyStatus)monthlyStatus.innerHTML=budgetInfoHtml(me,bud);
-
-  const st=pct>=100?['Boros','Pengeluaran sudah melewati anggaran.','BOROS']:pct>=70?['Waspada','Pengeluaran mulai mendekati batas.','WASPADA']:['Aman','Pengeluaran masih sesuai anggaran.','AMAN'];
-  setText('statusText',st[0]);setText('statusNote',st[1]);setText('statusPill',st[2]);
-
-  setText('netWorth',rupiah(netWorth()));
-  const fb=document.getElementById('forecastBalance');
-  if(fb){const v=forecastMonthEndBalance();fb.textContent=rupiah(v);fb.className='metric-value '+(v>=0?'green':'red')}
-
+  const inc=total('income'),exp=total('expense');
+  const set=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=value};
+  set('balance',rupiah(totalWalletBalance()));
+  set('income',rupiah(inc));
+  set('expense',rupiah(exp));
+  renderDashboardCards();
   renderFinanceAlerts();
 
   const ub=document.getElementById('upcomingBills');
@@ -721,10 +696,11 @@ function renderHome(){
     ub.innerHTML=bills.length?bills.map(b=>{
       const diff=Math.ceil((b._due-new Date())/86400000);
       const when=diff<=0?'Jatuh tempo hari ini':(diff===1?'Besok':'Dalam '+diff+' hari');
-      return `<div class="tx"><div class="row"><div><b>📅 ${escapeHtml(b.name)}</b><div class="tx-meta">${when} • tanggal ${b.day}</div></div><b>${rupiah(b.amount)}</b></div></div>`;
+      return `<div class="tx"><div class="row"><div><b>▦ ${escapeHtml(b.name)}</b><div class="tx-meta">${when} • tanggal ${b.day}</div></div><b>${rupiah(b.amount)}</b></div></div>`;
     }).join(''):'<div class="empty">Tidak ada tagihan yang belum dibayar.</div>';
   }
 }
+
 function renderBudgets(){
   const autoNote=db.settings.budgetAuto?'<div class="small-note" style="margin:8px 3px">ℹ️ Anggaran bulan ini dibuat otomatis dari rata-rata 3 bulan sebelumnya. Anda tetap bisa Edit.</div>':'';
   budgetList.innerHTML=autoNote+db.budgets.map(b=>{
@@ -1120,7 +1096,6 @@ function renderAll(){renderHome();renderTransactions();renderBudgets();renderRep
 ensureMonthlyBudgets();
 renderAll();
 </script>
-
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function () {
@@ -1130,5 +1105,4 @@ if ('serviceWorker' in navigator) {
   });
 }
 </script>
-
 </body></html>
