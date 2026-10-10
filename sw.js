@@ -1,4 +1,66 @@
-const CACHE="dompetku-v2-2";const A=["./","./index.html","./manifest.webmanifest","./icon-180.png","./icon-512.png"];
-self.addEventListener("install",e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(A))));
-self.addEventListener("activate",e=>e.waitUntil(self.clients.claim()));
-self.addEventListener("fetch",e=>e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(x=>{let c=x.clone();caches.open(CACHE).then(k=>k.put(e.request,c));return x}).catch(()=>caches.match("./index.html")))));
+'use strict';
+
+const CACHE_NAME = 'dompetku-v2-10-0-offline';
+const APP_FILES = [
+  './',
+  './index.html',
+  './manifest.webmanifest',
+  './icon-180.png',
+  './icon-512.png'
+];
+
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(APP_FILES))
+      .then(() => self.skipWaiting())
+  );
+});
+
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(
+        keys.filter(key => key.startsWith('dompetku-') && key !== CACHE_NAME)
+            .map(key => caches.delete(key))
+      ))
+      .then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch', event => {
+  const request = event.request;
+  const url = new URL(request.url);
+
+  // Do not intercept non-GET requests or requests to other origins.
+  if (request.method !== 'GET' || url.origin !== self.location.origin) return;
+
+  event.respondWith((async () => {
+    const cache = await caches.open(CACHE_NAME);
+
+    // For page navigation, use the cached app shell first when offline.
+    if (request.mode === 'navigate') {
+      try {
+        const response = await fetch(request);
+        if (response && response.ok) {
+          cache.put('./index.html', response.clone()).catch(() => {});
+          return response;
+        }
+      } catch (_) {}
+      return (await cache.match('./index.html')) || (await cache.match('./'));
+    }
+
+    const cached = await cache.match(request);
+    if (cached) return cached;
+
+    try {
+      const response = await fetch(request);
+      if (response && response.ok && response.type === 'basic') {
+        cache.put(request, response.clone()).catch(() => {});
+      }
+      return response;
+    } catch (_) {
+      return Response.error();
+    }
+  })());
+});

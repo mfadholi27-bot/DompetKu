@@ -6,8 +6,9 @@
 <meta name="theme-color" content="#0b1020">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<title>DompetKu v2.9.9 Neon Swipe</title>
+<title>DompetKu v2.10.0 Neon Pro</title>
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
 <style>
 :root{--bg:#080d19;--card:#111a2b;--card2:#152238;--text:#edf4ff;--muted:#94a7c3;--primary:#22d3ee;--danger:#fb7185;--warn:#fbbf24;--line:#27364e;--green:#34d399;--blue:#60a5fa}
 *{box-sizing:border-box}html{background:var(--bg);color-scheme:dark}body{margin:0;background:radial-gradient(ellipse at top,#13223b 0%,#080d19 55%);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh}
@@ -995,4 +996,17 @@ function renderAll(){renderHome();renderTransactions();renderBudgets();renderRep
 ensureMonthlyBudgets();
 renderAll();
 </script>
+
+<script>
+/* DompetKu PWA offline support */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('./sw.js')
+      .catch(function (error) {
+        console.error('DompetKu service worker gagal didaftarkan:', error);
+      });
+  });
+}
+</script>
+
 </body></html>
