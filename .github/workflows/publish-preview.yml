@@ -1,9 +1,10 @@
-name: Publish DompetKu preview
+name: Publish DompetKu preview and production
 
 on:
   push:
     branches:
       - commercial-development
+      - main
   workflow_dispatch:
 
 permissions:
