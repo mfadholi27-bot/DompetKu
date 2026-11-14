@@ -86,9 +86,11 @@ hr{border:0;border-top:1px solid var(--line);margin:14px 0}
 const KEY='dompetku_v2';
 const CAT_KEY='dompetku_categories_v25';
 
-let db=JSON.parse(localStorage.getItem(KEY)||'null')||{
+let db;
+try{db=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){db=null}
+db=db&&typeof db==='object'&&!Array.isArray(db)?db:{
   transactions:[],budgets:[],wallets:[{id:1,name:'Cash'}],transfers:[],
-  goals:[],bills:[],debts:[],settings:{monthlyBudget:0}
+  goals:[],bills:[],debts:[],settings:{monthlyBudget:0},categories:[]
 };
 
 if(!Array.isArray(db.transactions)) db.transactions=[];
@@ -98,7 +100,8 @@ if(!Array.isArray(db.wallets)||!db.wallets.length) db.wallets=[{id:1,name:'Cash'
 if(!Array.isArray(db.goals)) db.goals=[];
 if(!Array.isArray(db.bills)) db.bills=[];
 if(!Array.isArray(db.debts)) db.debts=[];
-if(!db.settings) db.settings={monthlyBudget:0};
+if(!db.settings||typeof db.settings!=='object'||Array.isArray(db.settings)) db.settings={monthlyBudget:0};
+if(!Array.isArray(db.categories)) db.categories=[];
 
 const rupiah=n=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Number(n)||0);
 const uid=()=>Date.now()+Math.random();
@@ -108,16 +111,19 @@ function normalizeCategory(v){let s=String(v||'').trim();let k=s.toLowerCase();r
 const DEFAULT_CATEGORIES=['Gaji','Bonus','Makanan','Transportasi','Rumah','Tagihan','Belanja','Hiburan','Kesehatan','Pendidikan','Anak','Lainnya'];
 
 function getCategories(){
-  try{
-    const saved=JSON.parse(localStorage.getItem(CAT_KEY)||'null');
-    if(Array.isArray(saved)&&saved.length) return [...new Set(saved.map(x=>String(x).trim()).filter(Boolean))];
-  }catch(e){}
-  localStorage.setItem(CAT_KEY,JSON.stringify(DEFAULT_CATEGORIES));
-  return DEFAULT_CATEGORIES.slice();
+  let saved=Array.isArray(db.categories)?db.categories:[];
+  if(!saved.length){
+    try{const legacy=JSON.parse(localStorage.getItem(CAT_KEY)||'null');if(Array.isArray(legacy))saved=legacy}catch(e){}
+  }
+  if(!saved.length)saved=DEFAULT_CATEGORIES;
+  const clean=[...new Set(saved.map(x=>String(x||'').trim()).filter(Boolean))];
+  db.categories=clean.length?clean:DEFAULT_CATEGORIES.slice();
+  return db.categories.slice();
 }
 
 function saveCategories(cats){
-  localStorage.setItem(CAT_KEY,JSON.stringify([...new Set(cats.filter(Boolean))]));
+  db.categories=[...new Set(cats.map(x=>String(x||'').trim()).filter(Boolean))];
+  try{localStorage.setItem(CAT_KEY,JSON.stringify(db.categories))}catch(e){}
 }
 
 function addCategoryValue(name){
@@ -160,8 +166,30 @@ function walletBalance(id){
   return t+tr;
 }
 
-const monthKey=d=>new Date(d).toISOString().slice(0,7);
-function save(){localStorage.setItem(KEY,JSON.stringify(db));renderAll()}
+function localDateString(value=new Date()){
+  const d=value instanceof Date?value:new Date(value);
+  if(Number.isNaN(d.getTime()))return '';
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+const monthKey=d=>{
+  const raw=String(d||'');
+  if(/^\d{4}-\d{2}/.test(raw))return raw.slice(0,7);
+  const date=d instanceof Date?d:new Date(d);
+  return Number.isNaN(date.getTime())?'':date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0');
+};
+function save(){
+  try{
+    db.categories=getCategories();
+    localStorage.setItem(KEY,JSON.stringify(db));
+    try{localStorage.setItem(CAT_KEY,JSON.stringify(db.categories))}catch(e){}
+    renderAll();
+    return true;
+  }catch(error){
+    alert('Data belum berhasil disimpan. Penyimpanan perangkat mungkin penuh atau dibatasi. Buat backup, lalu coba lagi.');
+    console.error('DompetKu save failed:',error);
+    return false;
+  }
+}
 function total(type){return db.transactions.filter(x=>x.type===type).reduce((s,x)=>s+Number(x.amount),0)}
 function monthTotal(type){const m=monthKey(new Date());return db.transactions.filter(x=>x.type===type&&monthKey(x.date)===m).reduce((s,x)=>s+Number(x.amount),0)}
 function categoryTotal(cat){
@@ -181,7 +209,7 @@ let _lastSubmitAt=0;
 document.addEventListener('submit',function(e){const now=Date.now();if(now-_lastSubmitAt<900){e.preventDefault();e.stopImmediatePropagation();return} _lastSubmitAt=now;},true);
 
 function openTx(type,edit=null){
-  let x=edit||{date:new Date().toISOString().slice(0,10),amount:'',category:type==='income'?'Gaji':'Makanan',wallet:db.wallets[0]?.id||1,note:''};
+  let x=edit||{date:localDateString(),amount:'',category:type==='income'?'Gaji':'Makanan',wallet:db.wallets[0]?.id||1,note:''};
   x.category=categoryForSelect(x.category);
   openModal(type==='income'?'Tambah Pemasukan':'Tambah Pengeluaran',`
   <form onsubmit="submitTx(event,'${type}',${edit?edit.id:'null'})">
@@ -196,9 +224,18 @@ function openTx(type,edit=null){
 
 function submitTx(e,type,editId){
   e.preventDefault();
-  const o={id:editId&&editId!=='null'?Number(editId):uid(),type,amount:Number(document.getElementById('famount').value),category:categoryForSelect(document.getElementById('fcat').value),wallet:Number(document.getElementById('fwallet').value),date:document.getElementById('fdate').value,note:document.getElementById('fnote').value.trim()};
+  const amount=Number(document.getElementById('famount').value);
+  const wallet=Number(document.getElementById('fwallet').value);
+  const date=document.getElementById('fdate').value;
+  const category=categoryForSelect(document.getElementById('fcat').value);
+  if(!Number.isSafeInteger(amount)||amount<=0){alert('Nominal harus berupa angka bulat lebih dari 0.');return}
+  if(!db.wallets.some(w=>Number(w.id)===wallet)){alert('Dompet tidak ditemukan. Muat ulang pilihan dompet.');return}
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||Number.isNaN(new Date(date+'T00:00:00').getTime())){alert('Tanggal transaksi tidak valid.');return}
+  if(!category){alert('Kategori wajib dipilih.');return}
+  const o={id:editId&&editId!=='null'?Number(editId):uid(),type,amount,category,wallet,date,note:document.getElementById('fnote').value.trim()};
   const i=db.transactions.findIndex(x=>x.id===o.id);
-  i>=0?db.transactions[i]=o:db.transactions.push(o);save();closeModal()
+  if(i>=0)db.transactions[i]=o;else db.transactions.push(o);
+  if(save())closeModal();
 }
 
 function delTx(i){if(confirm('Hapus transaksi ini?')){db.transactions=db.transactions.filter(x=>x.id!==i);save()}}
@@ -354,7 +391,7 @@ function deleteWallet(id){if(db.wallets.length<=1){alert('Minimal harus ada satu
 function deleteTransfer(id){if(confirm('Hapus transfer ini? Saldo akan dihitung ulang.')){db.transfers=db.transfers.filter(x=>+x.id!==+id);save();closeModal();openWallet()}}
 function openTransfer(){
   if(db.wallets.length<2){alert('Tambahkan minimal 2 dompet terlebih dahulu.');return}
-  openModal('Transfer Antar Dompet',`<form onsubmit="event.preventDefault();let a=Number(tf.value),from=Number(tfrom.value),to=Number(tto.value);if(from===to){alert('Dompet asal dan tujuan harus berbeda.');return}if(a<=0){alert('Nominal harus lebih dari 0.');return}if(walletBalance(from)<a){alert('Saldo dompet asal tidak cukup.');return}db.transfers.push({id:uid(),amount:a,from,to,date:td.value,note:tn.value.trim()});save();closeModal()"><div class="field"><label>Nominal</label><input id="tf" type="number" min="1" required></div><div class="field"><label>Dari dompet</label><select id="tfrom">${db.wallets.map(w=>`<option value="${w.id}">${escapeHtml(w.name)} — ${rupiah(walletBalance(w.id))}</option>`).join('')}</select></div><div class="field"><label>Ke dompet</label><select id="tto">${db.wallets.map((w,i)=>`<option value="${w.id}" ${i===1?'selected':''}>${escapeHtml(w.name)}</option>`).join('')}</select></div><div class="field"><label>Tanggal</label><input id="td" type="date" value="${new Date().toISOString().slice(0,10)}" required></div><div class="field"><label>Catatan</label><input id="tn" placeholder="Opsional"></div><button class="primary" style="width:100%">Transfer</button></form>`)
+  openModal('Transfer Antar Dompet',`<form onsubmit="event.preventDefault();let a=Number(tf.value),from=Number(tfrom.value),to=Number(tto.value);if(from===to){alert('Dompet asal dan tujuan harus berbeda.');return}if(a<=0){alert('Nominal harus lebih dari 0.');return}if(walletBalance(from)<a){alert('Saldo dompet asal tidak cukup.');return}db.transfers.push({id:uid(),amount:a,from,to,date:td.value,note:tn.value.trim()});save();closeModal()"><div class="field"><label>Nominal</label><input id="tf" type="number" min="1" required></div><div class="field"><label>Dari dompet</label><select id="tfrom">${db.wallets.map(w=>`<option value="${w.id}">${escapeHtml(w.name)} — ${rupiah(walletBalance(w.id))}</option>`).join('')}</select></div><div class="field"><label>Ke dompet</label><select id="tto">${db.wallets.map((w,i)=>`<option value="${w.id}" ${i===1?'selected':''}>${escapeHtml(w.name)}</option>`).join('')}</select></div><div class="field"><label>Tanggal</label><input id="td" type="date" value="${localDateString()}" required></div><div class="field"><label>Catatan</label><input id="tn" placeholder="Opsional"></div><button class="primary" style="width:100%">Transfer</button></form>`)
 }
 
 function openBill(){
@@ -377,7 +414,7 @@ function openSettings(){
     <div class="card">
       <b>Anggaran pengeluaran bulanan</b>
       <input id="mb" type="number" value="${db.settings.monthlyBudget||''}" placeholder="Contoh 3500000">
-      <button class="primary" style="width:100%;margin-top:8px" onclick="db.settings.monthlyBudget=Number(mb.value);save();closeModal()">Simpan</button>
+      <button class="primary" style="width:100%;margin-top:8px" onclick="const v=Number(mb.value);if(!Number.isFinite(v)||v<0){alert('Anggaran harus berupa angka 0 atau lebih.');return}db.settings.monthlyBudget=v;if(save())closeModal()">Simpan</button>
     </div>
     <div class="card">
       <b>🏷️ Kategori</b>
@@ -414,7 +451,7 @@ function exportCsv(){
  const rows=[['Tanggal','Jenis','Kategori','Dompet','Nominal','Catatan']];
  [...db.transactions].sort((a,b)=>String(a.date).localeCompare(String(b.date))).forEach(x=>rows.push([x.date,x.type==='income'?'Pemasukan':'Pengeluaran',normalizeCategory(x.category),db.wallets.find(w=>+w.id===+x.wallet)?.name||'Dompet',x.amount,x.note||'']));
  const csv='\ufeff'+rows.map(r=>r.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(',')).join('\r\n');
- const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='DompetKu_Transaksi_'+new Date().toISOString().slice(0,10)+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='DompetKu_Transaksi_'+localDateString()+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)
 }
 function openMonthlyReport(){
  const m=monthKey(new Date());
@@ -429,20 +466,47 @@ function renderMonthlyReport(month){
 }
 
 function backup(){
-  const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='DompetKu_Backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)
+  try{
+    db.categories=getCategories();
+    const payload={app:'DompetKu',backupVersion:2,createdAt:new Date().toISOString(),data:db};
+    const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download='DompetKu_Backup_'+localDateString()+'.json';a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),1500);
+  }catch(error){alert('Backup gagal dibuat. Periksa ruang penyimpanan perangkat.');console.error(error)}
 }
 function restore(e){
-  const f=e.target.files[0];if(!f)return;
+  const f=e.target.files&&e.target.files[0];if(!f)return;
+  if(f.size>25*1024*1024){alert('Ukuran file backup melebihi batas 25 MB.');e.target.value='';return}
   const r=new FileReader();
   r.onload=()=>{
     try{
-      const x=JSON.parse(r.result);
-      if(!x.transactions||!x.wallets)throw 0;
-      if(confirm('Ganti data sekarang dengan backup ini?')){db=x;save();migrateCategories();alert('Restore berhasil.')}
-    }catch(_){alert('File backup tidak valid.')}
+      const parsed=JSON.parse(r.result);
+      const x=parsed&&parsed.app==='DompetKu'&&parsed.data?parsed.data:parsed;
+      if(!x||typeof x!=='object'||!Array.isArray(x.transactions)||!Array.isArray(x.wallets))throw new Error('Struktur backup tidak sesuai');
+      const arrays=['transactions','budgets','wallets','transfers','goals','bills','debts'];
+      arrays.forEach(k=>{if(x[k]!==undefined&&!Array.isArray(x[k]))throw new Error('Bagian '+k+' tidak valid')});
+      const candidate={...x};
+      arrays.forEach(k=>{if(!Array.isArray(candidate[k]))candidate[k]=[]});
+      if(!candidate.wallets.length)throw new Error('Backup tidak memiliki dompet');
+      if(!candidate.settings||typeof candidate.settings!=='object'||Array.isArray(candidate.settings))candidate.settings={monthlyBudget:0};
+      const categories=Array.isArray(candidate.categories)?candidate.categories:(Array.isArray(parsed.categories)?parsed.categories:getCategories());
+      candidate.categories=[...new Set(categories.map(v=>String(v||'').trim()).filter(Boolean))];
+      for(const t of candidate.transactions){
+        if(!t||typeof t!=='object'||!['income','expense'].includes(t.type)||!Number.isFinite(Number(t.amount))||Number(t.amount)<=0||!t.date)throw new Error('Ada transaksi dengan data tidak valid');
+        t.amount=Number(t.amount);
+      }
+      if(!confirm('Ganti seluruh data saat ini dengan isi backup? Disarankan membuat backup data sekarang terlebih dahulu.'))return;
+      const previous=db;
+      db=candidate;
+      if(!save()){db=previous;renderAll();throw new Error('Penyimpanan gagal; data sebelumnya dipertahankan')}
+      migrateCategories();
+      alert('Restore berhasil. Seluruh data dan kategori dari backup telah dimuat.');
+    }catch(error){alert('Restore dibatalkan: '+(error.message||'File backup tidak valid.'));console.error('Restore failed:',error)}
+    finally{e.target.value=''}
   };
-  r.readAsText(f);e.target.value=''
+  r.onerror=()=>{alert('File backup tidak dapat dibaca.');e.target.value=''};
+  r.readAsText(f)
 }
 function resetData(){
   if(!confirm('Reset semua data DompetKu? Semua transaksi, anggaran, target tabungan, tagihan, utang/piutang, dan dompet tambahan akan dihapus.'))return;
