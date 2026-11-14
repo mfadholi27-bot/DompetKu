@@ -228,6 +228,7 @@ function openTx(type,edit=null){
 
 function submitTx(e,type,editId){
   e.preventDefault();
+  if(editId&&editId!=='null'&&db.transactions.some(x=>Number(x.id)===Number(editId)&&x.sourceType)){alert('Transaksi ini berasal dari Tagihan / Utang-Piutang. Ubah melalui menu sumbernya agar saldo dan status tetap sinkron.');return}
   const amount=Number(document.getElementById('famount').value);
   const wallet=Number(document.getElementById('fwallet').value);
   const date=document.getElementById('fdate').value;
@@ -242,7 +243,7 @@ function submitTx(e,type,editId){
   if(save())closeModal();
 }
 
-function delTx(i){if(confirm('Hapus transaksi ini?')){db.transactions=db.transactions.filter(x=>x.id!==i);save()}}
+function delTx(i){if(db.transactions.some(x=>Number(x.id)===Number(i)&&x.sourceType)){alert('Transaksi ini terhubung ke Tagihan / Utang-Piutang. Hapus atau batalkan pembayaran melalui menu sumbernya agar status tetap sinkron.');return}if(confirm('Hapus transaksi ini?')){db.transactions=db.transactions.filter(x=>x.id!==i);save()}}
 
 function populateTransactionFilters(){
  const c=document.getElementById('filterCategory'),w=document.getElementById('filterWallet'); if(!c||!w)return;
@@ -259,7 +260,7 @@ function renderTransactions(){
   const c=normalizeCategory(x.category),text=(c+' '+(x.note||'')).toLowerCase();
   return (!q||text.includes(q))&&(type==='all'||x.type===type)&&(cat==='all'||c.toLowerCase()===cat.toLowerCase())&&(wallet==='all'||String(x.wallet)===String(wallet))&&(!month||monthKey(x.date)===month);
  }).sort((a,b)=>String(b.date).localeCompare(String(a.date))||Number(b.id)-Number(a.id));
- txList.innerHTML=a.length?a.map(x=>`<div class="tx"><div class="row"><div><div class="tx-title">${escapeHtml(normalizeCategory(x.category))}</div><div class="tx-meta">${escapeHtml(x.date)} • ${escapeHtml(db.wallets.find(w=>w.id==x.wallet)?.name||'Dompet')}${x.note?' • '+escapeHtml(x.note):''}</div></div><div class="${x.type==='income'?'green':'red'}"><b>${x.type==='income'?'+':'−'}${rupiah(x.amount)}</b><br><button class="mini ghost" onclick='openTx("${x.type}",${JSON.stringify(x).replace(/</g,"\u003c").replace(/'/g,"&#39;")})'>Edit</button> <button class="mini dangerBtn" onclick="delTx(${x.id})">Hapus</button></div></div></div>`).join(''):'<div class="empty">Tidak ada transaksi yang sesuai filter.</div>'
+ txList.innerHTML=a.length?a.map(x=>{const linked=!!x.sourceType;return `<div class="tx"><div class="row"><div><div class="tx-title">${escapeHtml(normalizeCategory(x.category))}</div><div class="tx-meta">${escapeHtml(x.date)} • ${escapeHtml(db.wallets.find(w=>w.id==x.wallet)?.name||'Dompet')}${x.note?' • '+escapeHtml(x.note):''}</div></div><div class="${x.type==='income'?'green':'red'}"><b>${x.type==='income'?'+':'−'}${rupiah(x.amount)}</b><br>${linked?'<small class="muted">Dikelola dari Tagihan / Utang-Piutang</small>':`<button class="mini ghost" onclick='openTx("${x.type}",${JSON.stringify(x).replace(/</g,"\\u003c").replace(/'/g,"&#39;")})'>Edit</button> <button class="mini dangerBtn" onclick="delTx(${x.id})">Hapus</button>`}</div></div></div>`}).join(''):'<div class="empty">Tidak ada transaksi yang sesuai filter.</div>'
 }
 function renderHome(){
   const inc=total('income'),exp=total('expense'),bud=db.settings.monthlyBudget||0,me=monthTotal('expense');
@@ -318,15 +319,16 @@ function openBudget(editId=null){
     event.preventDefault();
     const cat=categoryForSelect(document.getElementById('bc').value);
     const amount=Number(document.getElementById('ba').value);
-    if(!amount || amount<=0){alert('Nominal anggaran harus lebih dari 0.');return;}
+    if(!Number.isSafeInteger(amount)||amount<=0){alert('Nominal anggaran harus berupa angka bulat lebih dari 0.');return;}
+    const duplicate=db.budgets.some(b=>String(b.category||'').trim().toLowerCase()===cat.trim().toLowerCase()&&b.id!==${edit?edit.id:'null'});
+    if(duplicate){alert('Anggaran untuk kategori ini sudah ada. Silakan edit anggaran yang tersedia.');return;}
     if(${edit?'true':'false'}){
       const i=db.budgets.findIndex(x=>x.id===${edit?edit.id:'null'});
       if(i>=0) db.budgets[i]={...db.budgets[i],category:cat,amount:amount};
     }else{
       db.budgets.push({id:uid(),category:cat,amount:amount});
     }
-    save();
-    closeModal();
+    if(save())closeModal();
   ">
     <div class="field"><label>Kategori</label><select id="bc" required>${categoryOptions(category)}</select></div>
     <div class="field"><label>Anggaran bulanan</label><input id="ba" type="number" min="1" value="${amount}" required></div>
@@ -389,8 +391,8 @@ function openWallet(){
  const hist=[...db.transfers].sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,30).map(t=>{const f=db.wallets.find(w=>+w.id===+t.from),to=db.wallets.find(w=>+w.id===+t.to);return `<div class="tx"><div class="row"><div><b>🔄 ${escapeHtml(f?.name||'Dompet')} → ${escapeHtml(to?.name||'Dompet')}</b><div class="tx-meta">${escapeHtml(t.date)}${t.note?' • '+escapeHtml(t.note):''}</div></div><div><b>${rupiah(t.amount)}</b><br><button class="mini dangerBtn" onclick="deleteTransfer(${t.id})">Hapus</button></div></div></div>`}).join('')||'<div class="empty">Belum ada transfer.</div>';
  openModal('Dompet',`${list||'<div class="empty">Belum ada dompet.</div>'}<div class="actions" style="margin-top:10px"><button class="ghost" onclick="openTransfer()">🔄 Transfer</button><button class="ghost" onclick="addWallet()">＋ Dompet</button></div><hr><b>📜 Riwayat transfer</b><div style="margin-top:6px">${hist}</div>`);
 }
-function addWallet(){openModal('Tambah Dompet',`<form onsubmit="event.preventDefault();const n=document.getElementById('wn').value.trim();if(!n)return;if(db.wallets.some(w=>w.name.toLowerCase()===n.toLowerCase())){alert('Nama dompet sudah ada.');return}db.wallets.push({id:uid(),name:n});save();closeModal()}"><div class="field"><label>Nama dompet</label><input id="wn" placeholder="Bank BRI / DANA / Cash" required></div><button class="primary" style="width:100%">Tambah</button></form>`)}
-function editWallet(id){const w=db.wallets.find(x=>+x.id===+id);if(!w)return;openModal('Edit Dompet',`<form onsubmit="event.preventDefault();const n=document.getElementById('wn').value.trim();if(!n)return;w.name=n;save();closeModal()"><div class="field"><label>Nama dompet</label><input id="wn" value="${escapeHtml(w.name)}" required></div><button class="primary" style="width:100%">Simpan</button></form>`)}
+function addWallet(){openModal('Tambah Dompet',`<form onsubmit="event.preventDefault();const n=document.getElementById('wn').value.trim();if(!n)return;if(db.wallets.some(w=>w.name.trim().toLowerCase()===n.toLowerCase())){alert('Nama dompet sudah ada.');return}db.wallets.push({id:uid(),name:n});if(save())closeModal()}"><div class="field"><label>Nama dompet</label><input id="wn" placeholder="Bank BRI / DANA / Cash" required></div><button class="primary" style="width:100%">Tambah</button></form>`)}
+function editWallet(id){const w=db.wallets.find(x=>+x.id===+id);if(!w)return;openModal('Edit Dompet',`<form onsubmit="event.preventDefault();const n=document.getElementById('wn').value.trim();if(!n)return;if(db.wallets.some(x=>+x.id!==+w.id&&x.name.trim().toLowerCase()===n.toLowerCase())){alert('Nama dompet sudah digunakan.');return}w.name=n;if(save())closeModal()"><div class="field"><label>Nama dompet</label><input id="wn" value="${escapeHtml(w.name)}" required></div><button class="primary" style="width:100%">Simpan</button></form>`)}
 function deleteWallet(id){if(db.wallets.length<=1){alert('Minimal harus ada satu dompet.');return}if(db.transactions.some(x=>+x.wallet===+id)||db.transfers.some(x=>+x.from===+id||+x.to===+id)){alert('Dompet masih digunakan oleh transaksi/transfer.');return}if(confirm('Hapus dompet ini?')){db.wallets=db.wallets.filter(x=>+x.id!==+id);save();closeModal()}}
 function deleteTransfer(id){if(confirm('Hapus transfer ini? Saldo akan dihitung ulang.')){db.transfers=db.transfers.filter(x=>+x.id!==+id);save();closeModal();openWallet()}}
 function openTransfer(){
