@@ -186,13 +186,13 @@ function save(){
     db.categories=getCategories();
     localStorage.setItem(KEY,JSON.stringify(db));
     try{localStorage.setItem(CAT_KEY,JSON.stringify(db.categories))}catch(e){}
-    renderAll();
-    return true;
   }catch(error){
     alert('Data belum berhasil disimpan. Penyimpanan perangkat mungkin penuh atau dibatasi. Buat backup, lalu coba lagi.');
     console.error('DompetKu save failed:',error);
     return false;
   }
+  try{renderAll()}catch(error){console.error('Data tersimpan, tetapi tampilan gagal diperbarui:',error)}
+  return true;
 }
 function total(type){return db.transactions.filter(x=>x.type===type).reduce((s,x)=>s+Number(x.amount),0)}
 function monthTotal(type){const m=monthKey(new Date());return db.transactions.filter(x=>x.type===type&&monthKey(x.date)===m).reduce((s,x)=>s+Number(x.amount),0)}
@@ -496,10 +496,33 @@ function restore(e){
       if(!candidate.settings||typeof candidate.settings!=='object'||Array.isArray(candidate.settings))candidate.settings={monthlyBudget:0};
       const categories=Array.isArray(candidate.categories)?candidate.categories:(Array.isArray(parsed.categories)?parsed.categories:getCategories());
       candidate.categories=[...new Set(categories.map(v=>String(v||'').trim()).filter(Boolean))];
+      const walletIds=candidate.wallets.map(w=>Number(w&&w.id));
+      if(candidate.wallets.some(w=>!w||typeof w!=='object'||!Number.isFinite(Number(w.id))||!String(w.name||'').trim())||new Set(walletIds).size!==walletIds.length)throw new Error('Daftar dompet tidak valid atau memiliki ID ganda');
+      const validDate=d=>typeof d==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(d)&&localDateString(new Date(d+'T00:00:00'))===d;
       for(const t of candidate.transactions){
-        if(!t||typeof t!=='object'||!['income','expense'].includes(t.type)||!Number.isFinite(Number(t.amount))||Number(t.amount)<=0||!t.date)throw new Error('Ada transaksi dengan data tidak valid');
+        if(!t||typeof t!=='object'||!['income','expense'].includes(t.type)||!Number.isSafeInteger(Number(t.amount))||Number(t.amount)<=0||!validDate(t.date)||!walletIds.includes(Number(t.wallet)))throw new Error('Ada transaksi dengan nominal, tanggal, atau dompet yang tidak valid');
+        t.amount=Number(t.amount);t.wallet=Number(t.wallet);
+      }
+      for(const b of candidate.budgets){
+        if(!b||!String(b.category||'').trim()||!Number.isFinite(Number(b.amount))||Number(b.amount)<=0)throw new Error('Ada anggaran dengan data tidak valid');
+        b.amount=Number(b.amount);
+      }
+      for(const t of candidate.transfers){
+        if(!t||!Number.isFinite(Number(t.amount))||Number(t.amount)<=0||Number(t.from)===Number(t.to)||!walletIds.includes(Number(t.from))||!walletIds.includes(Number(t.to))||!validDate(t.date))throw new Error('Ada transfer dengan data tidak valid');
         t.amount=Number(t.amount);
       }
+      for(const g of candidate.goals){
+        if(!g||!String(g.name||'').trim()||!Number.isFinite(Number(g.target))||Number(g.target)<=0||!Number.isFinite(Number(g.saved??0))||Number(g.saved??0)<0)throw new Error('Ada target tabungan dengan data tidak valid');
+      }
+      for(const bill of candidate.bills){
+        if(!bill||!String(bill.name||'').trim()||!Number.isFinite(Number(bill.amount))||Number(bill.amount)<=0||!Number.isInteger(Number(bill.day))||Number(bill.day)<1||Number(bill.day)>31)throw new Error('Ada tagihan dengan data tidak valid');
+      }
+      for(const debt of candidate.debts){
+        if(!debt||!['debt','receivable'].includes(debt.type)||!String(debt.name||'').trim()||!Number.isFinite(Number(debt.amount))||Number(debt.amount)<=0)throw new Error('Ada utang/piutang dengan data tidak valid');
+      }
+      const monthlyBudget=Number(candidate.settings.monthlyBudget||0);
+      if(!Number.isFinite(monthlyBudget)||monthlyBudget<0)throw new Error('Pengaturan anggaran bulanan tidak valid');
+      candidate.settings.monthlyBudget=monthlyBudget;
       if(!confirm('Ganti seluruh data saat ini dengan isi backup? Disarankan membuat backup data sekarang terlebih dahulu.'))return;
       const previous=db;
       db=candidate;
