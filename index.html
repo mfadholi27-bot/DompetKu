@@ -23,7 +23,7 @@ h1{font-size:25px;margin:0}.sub{color:var(--muted);font-size:13px;margin-top:4px
 button,input,select{font:inherit}button{border:0;border-radius:13px;padding:12px 14px;font-weight:700;cursor:pointer}.primary{background:var(--primary);color:white}.ghost{background:#eef5f4;color:var(--primary)}.dangerBtn{background:#fee2e2;color:#991b1b}
 input,select{width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;background:white;margin-top:6px}.field{margin:10px 0}.field label{font-size:13px;color:var(--muted)}
 .tx{padding:12px 0;border-bottom:1px solid var(--line)}.tx:last-child{border-bottom:0}.tx-title{font-weight:700}.tx-meta{font-size:12px;color:var(--muted);margin-top:3px}
-.nav{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:8px 10px calc(8px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(4,1fr);gap:5px;z-index:5}.nav button{background:transparent;color:var(--muted);padding:8px 4px;font-size:12px}.nav button.active{color:var(--primary)}
+.nav{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:8px 10px calc(8px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(4,1fr);gap:5px;z-index:5}.nav button{background:transparent;color:var(--muted);padding:8px 4px;font-size:12px;min-height:54px;line-height:1.2;text-align:center}.nav button.active{color:var(--primary)}.grid button{min-height:48px}
 .screen{display:none}.screen.active{display:block}.empty{text-align:center;color:var(--muted);padding:25px 10px}
 .modal{position:fixed;inset:0;background:#0007;display:none;align-items:flex-end;z-index:20}.modal.show{display:flex}.sheet{background:#fff;width:100%;border-radius:22px 22px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));max-height:92vh;overflow:auto}
 .actions{display:flex;gap:8px}.actions>*{flex:1}.mini{padding:7px 9px;font-size:12px}.pill{display:inline-block;padding:5px 9px;border-radius:99px;font-size:11px;font-weight:800;background:#eef5f4;color:var(--primary)}
@@ -123,7 +123,10 @@ function getCategories(){
 
 function saveCategories(cats){
   db.categories=[...new Set(cats.map(x=>String(x||'').trim()).filter(Boolean))];
-  try{localStorage.setItem(CAT_KEY,JSON.stringify(db.categories))}catch(e){}
+  try{
+    localStorage.setItem(CAT_KEY,JSON.stringify(db.categories));
+    localStorage.setItem(KEY,JSON.stringify(db));
+  }catch(e){console.warn('Kategori belum dapat disimpan ke penyimpanan utama:',e)}
 }
 
 function addCategoryValue(name){
@@ -167,6 +170,7 @@ function walletBalance(id){
 }
 
 function localDateString(value=new Date()){
+  if(typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value))return value;
   const d=value instanceof Date?value:new Date(value);
   if(Number.isNaN(d.getTime()))return '';
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
@@ -230,7 +234,7 @@ function submitTx(e,type,editId){
   const category=categoryForSelect(document.getElementById('fcat').value);
   if(!Number.isSafeInteger(amount)||amount<=0){alert('Nominal harus berupa angka bulat lebih dari 0.');return}
   if(!db.wallets.some(w=>Number(w.id)===wallet)){alert('Dompet tidak ditemukan. Muat ulang pilihan dompet.');return}
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||Number.isNaN(new Date(date+'T00:00:00').getTime())){alert('Tanggal transaksi tidak valid.');return}
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||localDateString(new Date(date+'T00:00:00'))!==date){alert('Tanggal transaksi tidak valid.');return}
   if(!category){alert('Kategori wajib dipilih.');return}
   const o={id:editId&&editId!=='null'?Number(editId):uid(),type,amount,category,wallet,date,note:document.getElementById('fnote').value.trim()};
   const i=db.transactions.findIndex(x=>x.id===o.id);
@@ -521,5 +525,12 @@ function renderReport(){
 }
 function renderAll(){renderHome();renderTransactions();renderBudgets();renderReport()}
 renderAll();
+</script>
+<script>
+if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost')){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(err=>console.warn('Pendaftaran offline mode gagal:',err));
+  });
+}
 </script>
 </body></html>
