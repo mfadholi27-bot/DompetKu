@@ -23,7 +23,7 @@ h1{font-size:25px;margin:0}.sub{color:var(--muted);font-size:13px;margin-top:4px
 button,input,select{font:inherit}button{border:0;border-radius:13px;padding:12px 14px;font-weight:700;cursor:pointer}.primary{background:var(--primary);color:white}.ghost{background:#eef5f4;color:var(--primary)}.dangerBtn{background:#fee2e2;color:#991b1b}
 input,select{width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;background:white;margin-top:6px}.field{margin:10px 0}.field label{font-size:13px;color:var(--muted)}
 .tx{padding:12px 0;border-bottom:1px solid var(--line)}.tx:last-child{border-bottom:0}.tx-title{font-weight:700}.tx-meta{font-size:12px;color:var(--muted);margin-top:3px}
-.nav{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:8px 10px calc(8px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(4,1fr);gap:5px;z-index:5}.nav button{background:transparent;color:var(--muted);padding:8px 4px;font-size:12px;min-height:54px;line-height:1.2;text-align:center}.nav button.active{color:var(--primary)}.grid button{min-height:48px}
+.nav{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:8px 10px calc(8px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(4,1fr);gap:5px;z-index:5}.nav button{background:transparent;color:var(--muted);padding:7px 4px;font-size:12px;min-height:56px;line-height:1.2;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}.nav button.active{color:var(--primary)}.nav-icon{display:block;font-size:19px;line-height:1}.nav-label{display:block;font-size:11px;line-height:1.2}.grid button{min-height:48px}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #14b8a6;outline-offset:2px}
 .screen{display:none}.screen.active{display:block}.empty{text-align:center;color:var(--muted);padding:25px 10px}
 .modal{position:fixed;inset:0;background:#0007;display:none;align-items:flex-end;z-index:20}.modal.show{display:flex}.sheet{background:#fff;width:100%;border-radius:22px 22px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));max-height:92vh;overflow:auto}
 .actions{display:flex;gap:8px}.actions>*{flex:1}.mini{padding:7px 9px;font-size:12px}.pill{display:inline-block;padding:5px 9px;border-radius:99px;font-size:11px;font-weight:800;background:#eef5f4;color:var(--primary)}
@@ -67,7 +67,7 @@ hr{border:0;border-top:1px solid var(--line);margin:14px 0}
 <div class="section-title">Data</div><div class="grid"><button class="ghost" onclick="backup()">💾 Backup</button><button class="ghost" onclick="document.getElementById('restoreFile').click()">♻️ Restore</button><button class="ghost" onclick="exportCsv()">📄 Export CSV</button><button class="ghost" onclick="openMonthlyReport()">📊 Laporan Bulanan</button></div><button class="dangerBtn" style="width:100%;margin-top:10px" onclick="resetData()">🗑️ Reset Semua Data</button><div class="muted" style="font-size:12px;margin-top:7px">Gunakan hanya jika ingin memulai DompetKu dari awal. Data tidak dapat dikembalikan kecuali ada backup.</div><input id="restoreFile" type="file" accept=".json,application/json" hidden onchange="restore(event)"></section>
 </div>
 
-<nav class="nav"><button class="active" onclick="show('home',this)">🏠<br>Beranda</button><button onclick="show('transactions',this)">🧾<br>Transaksi</button><button onclick="show('budgets',this)">📊<br>Anggaran</button><button onclick="show('more',this)">⚙️<br>Lainnya</button></nav>
+<nav class="nav" aria-label="Navigasi utama"><button class="active" onclick="show('home',this)" aria-label="Beranda"><span class="nav-icon" aria-hidden="true">🏠</span><span class="nav-label">Beranda</span></button><button onclick="show('transactions',this)" aria-label="Transaksi"><span class="nav-icon" aria-hidden="true">🧾</span><span class="nav-label">Transaksi</span></button><button onclick="show('budgets',this)" aria-label="Anggaran"><span class="nav-icon" aria-hidden="true">📊</span><span class="nav-label">Anggaran</span></button><button onclick="show('more',this)" aria-label="Lainnya"><span class="nav-icon" aria-hidden="true">⚙️</span><span class="nav-label">Lainnya</span></button></nav>
 <div id="modal" class="modal"><div class="sheet"><div class="row"><h2 id="modalTitle" style="margin:0">DompetKu</h2><button class="ghost" onclick="closeModal()">✕</button></div><div id="modalBody"></div></div></div>
 
 <div id="categoryPanel" class="category-panel">
@@ -448,6 +448,9 @@ function addCategory(){
 }
 function deleteCategory(c){
   if(getCategories().length<=1){alert('Minimal harus ada satu kategori.');return}
+  const usedInTransactions=db.transactions.some(x=>String(x.category||'').toLowerCase()===String(c).toLowerCase());
+  const usedInBudgets=db.budgets.some(x=>String(x.category||'').toLowerCase()===String(c).toLowerCase());
+  if(usedInTransactions||usedInBudgets){alert('Kategori ini masih digunakan pada transaksi atau anggaran. Pertahankan agar riwayat dan laporan tetap konsisten.');return}
   if(confirm('Hapus kategori '+c+'?')){saveCategories(getCategories().filter(x=>x!==c));renderCategoryManager()}
 }
 
